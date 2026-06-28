@@ -3,10 +3,12 @@ package emc.mapIt.service;
 import emc.mapIt.domain.MapItUser;
 import emc.mapIt.dto.MapItUserResponse;
 import emc.mapIt.dto.UserPatchRequest;
+import emc.mapIt.entity.LocationType;
 import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserProfileDetails;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
+import emc.mapIt.repository.LocationTypeRepository;
 import emc.mapIt.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,11 +28,11 @@ import java.util.UUID;
  * Responsabilidades:
  * </p>
  * <ul>
- *   <li>Crear usuarios validando unicidad de email</li>
- *   <li>Consultar usuarios por id/email con errores de dominio</li>
- *   <li>Actualizar campos editables del perfil</li>
- *   <li>Desbloquear capacidades</li>
- *   <li>Convertir entre modelo de dominio, entidad y DTO de respuesta</li>
+ * <li>Crear usuarios validando unicidad de email</li>
+ * <li>Consultar usuarios por id/email con errores de dominio</li>
+ * <li>Actualizar campos editables del perfil</li>
+ * <li>Desbloquear capacidades</li>
+ * <li>Convertir entre modelo de dominio, entidad y DTO de respuesta</li>
  * </ul>
  *
  * @author MapIt Development Team
@@ -44,14 +46,17 @@ public class UserService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
+    private final LocationTypeRepository locationTypeRepository;
 
     /**
      * Constructor para inyección de dependencias.
      *
-     * @param userRepository repositorio de usuarios
+     * @param userRepository         repositorio de usuarios
+     * @param locationTypeRepository repositorio de tipos de ubicación
      */
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, LocationTypeRepository locationTypeRepository) {
         this.userRepository = userRepository;
+        this.locationTypeRepository = locationTypeRepository;
     }
 
     /**
@@ -60,8 +65,10 @@ public class UserService {
      * Reglas de configuración inicial por tipo:
      * </p>
      * <ul>
-     *   <li>INDIVIDUAL: nivel/XP iniciales en 0, capacidades básicas, sin favoritos</li>
-     *   <li>PROFESSIONAL/ENTITY: nivel/XP nulos, capacidades ampliadas, sin favoritos</li>
+     * <li>INDIVIDUAL: nivel/XP iniciales en 0, capacidades básicas, sin
+     * favoritos</li>
+     * <li>PROFESSIONAL/ENTITY: nivel/XP nulos, capacidades ampliadas, sin
+     * favoritos</li>
      * </ul>
      * <p>
      * Email se normaliza (trim + lowercase) antes de persistir.
@@ -82,7 +89,8 @@ public class UserService {
         if (candidate == null) {
             throw new ApiException("BAD_REQUEST", "El usuario es requerido", HttpStatus.BAD_REQUEST);
         }
-        if (isBlank(candidate.getName()) || isBlank(candidate.getEmail()) || isBlank(candidate.getPasswordHash()) || candidate.getUserType() == null) {
+        if (isBlank(candidate.getName()) || isBlank(candidate.getEmail()) || isBlank(candidate.getPasswordHash())
+                || candidate.getUserType() == null) {
             throw new ApiException("BAD_REQUEST", "Datos incompletos para crear usuario", HttpStatus.BAD_REQUEST);
         }
 
@@ -158,9 +166,10 @@ public class UserService {
      * Campos soportados:
      * </p>
      * <ul>
-     *   <li>{@code name}: actualiza si no está en blanco</li>
-     *   <li>{@code avatarUrl}: actualiza URL (puede ser nulo)</li>
-     *   <li>{@code favoriteLocationTypeIds}: solo para tipo INDIVIDUAL, con validación de nivel</li>
+     * <li>{@code name}: actualiza si no está en blanco</li>
+     * <li>{@code avatarUrl}: actualiza URL (puede ser nulo)</li>
+     * <li>{@code favoriteLocationTypeIds}: solo para tipo INDIVIDUAL, con
+     * validación de nivel</li>
      * </ul>
      *
      * @param id    id del usuario a actualizar
@@ -168,7 +177,8 @@ public class UserService {
      * @return usuario actualizado desde BD
      * @throws ApiException con código BAD_REQUEST si id es nulo
      * @throws ApiException con código NOT_FOUND si el usuario no existe
-     * @throws ApiException con código UNPROCESSABLE_ENTITY si favoritos incumplen regla de nivel
+     * @throws ApiException con código UNPROCESSABLE_ENTITY si favoritos incumplen
+     *                      regla de nivel
      */
     public MapItUser updateUser(UUID id, UserPatchRequest patch) {
         if (id == null) {
@@ -207,7 +217,7 @@ public class UserService {
             profileDetails.setBirthDate(patch.birthDate());
         }
         if (patch.favoriteLocationTypeIds() != null && user.getUserType() == UserType.PARTICULAR) {
-            List<String> sanitizedFavorites = sanitizeStringList(patch.favoriteLocationTypeIds());
+            List<Long> sanitizedFavorites = sanitizeLongList(patch.favoriteLocationTypeIds());
             validateFavoriteLocationTypes(sanitizedFavorites, profileDetails.getLevel());
             user.setFavoriteLocationTypeIds(new ArrayList<>(new LinkedHashSet<>(sanitizedFavorites)));
         }
@@ -270,28 +280,27 @@ public class UserService {
                 ? new ArrayList<>()
                 : new ArrayList<>(user.getUnlockedCapabilities());
 
-        List<String> favorites = user.getFavoriteLocationTypeIds() == null
+        List<Long> favorites = user.getFavoriteLocationTypeIds() == null
                 ? new ArrayList<>()
                 : new ArrayList<>(user.getFavoriteLocationTypeIds());
 
-       return new MapItUserResponse(
-        user.getId(),
-        user.getName(),
-        user.getEmail(),
-        user.getUserType(),
-        user.getLevel(),
-        user.getXp(),
-        unlocked,
-        favorites,
-        user.getAvatarUrl(),
-        user.getPhone(),
-        user.getCity(),
-        user.getProvince(),
-        user.getBio(),
-        user.getBirthDate(),
-        user.getCreatedAt(),
-        user.getUpdatedAt()
-);
+        return new MapItUserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getUserType(),
+                user.getLevel(),
+                user.getXp(),
+                unlocked,
+                favorites,
+                user.getAvatarUrl(),
+                user.getPhone(),
+                user.getCity(),
+                user.getProvince(),
+                user.getBio(),
+                user.getBirthDate(),
+                user.getCreatedAt(),
+                user.getUpdatedAt());
     }
 
     /**
@@ -310,8 +319,7 @@ public class UserService {
                 user.getName(),
                 user.getEmail(),
                 user.getPasswordHash(),
-                user.getUserType()
-        );
+                user.getUserType());
 
         UserProfileDetails profileDetails = user.getProfileDetails();
 
@@ -333,7 +341,7 @@ public class UserService {
                 : new LinkedHashSet<>(user.getUnlockedCapabilities());
         domain.setUnlockedCapabilities(capabilities);
 
-        Set<String> favorites = user.getFavoriteLocationTypeIds() == null
+        Set<Long> favorites = user.getFavoriteLocationTypeIds() == null
                 ? new LinkedHashSet<>()
                 : new LinkedHashSet<>(user.getFavoriteLocationTypeIds());
         domain.setFavoriteLocationTypeIds(favorites);
@@ -383,8 +391,7 @@ public class UserService {
         return new ArrayList<>(List.of(
                 "max_publications_1",
                 "weekly_limit_3",
-                "basic_search"
-        ));
+                "basic_search"));
     }
 
     /**
@@ -397,21 +404,25 @@ public class UserService {
                 "advanced_search",
                 "premium_locations",
                 "analytics_access",
-                "priority_support"
-        ));
+                "priority_support"));
     }
 
     /**
      * Valida que favoritos cumplan restricciones de nivel.
      */
-    private void validateFavoriteLocationTypes(List<String> locationTypeIds, Integer userLevel) {
-        for (String locationTypeId : locationTypeIds) {
-            if (locationTypeId.endsWith("-profesional") && (userLevel == null || userLevel < 10)) {
+    private void validateFavoriteLocationTypes(List<Long> locationTypeIds, Integer userLevel) {
+        for (Long locationTypeId : locationTypeIds) {
+            LocationType locationType = locationTypeRepository.findById(locationTypeId)
+                    .orElseThrow(() -> new ApiException(
+                            "BAD_REQUEST",
+                            "locationTypeId inválido: " + locationTypeId,
+                            HttpStatus.BAD_REQUEST));
+
+            if ("profesional".equalsIgnoreCase(locationType.getName()) && (userLevel == null || userLevel < 10)) {
                 throw new ApiException(
                         "UNPROCESSABLE_ENTITY",
                         "Requiere nivel 10 para añadir ubicaciones profesionales a favoritos",
-                        HttpStatus.UNPROCESSABLE_ENTITY
-                );
+                        HttpStatus.UNPROCESSABLE_ENTITY);
             }
         }
     }
@@ -438,14 +449,14 @@ public class UserService {
     /**
      * Limpia lista de strings: trim, sin nulls ni vacíos.
      */
-    private List<String> sanitizeStringList(List<String> input) {
+    private List<Long> sanitizeLongList(List<Long> input) {
         if (input == null) {
             return new ArrayList<>();
         }
-        List<String> result = new ArrayList<>();
-        for (String value : input) {
-            if (!isBlank(value)) {
-                result.add(value.trim());
+        List<Long> result = new ArrayList<>();
+        for (Long value : input) {
+            if (value != null) {
+                result.add(value);
             }
         }
         return result;

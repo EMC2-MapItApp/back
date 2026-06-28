@@ -15,71 +15,73 @@ import java.util.UUID;
  * </p>
  *
  * <ul>
- *   <li>Campos de identidad ({@code id}, {@code name}, {@code email}, {@code userType}):
- *       proceden de la tabla {@code users}.</li>
- *   <li>Campos de perfil ({@code phone}, {@code city}, {@code province}, {@code bio},
- *       {@code birthDate}, {@code avatarUrl}, {@code level}, {@code xp},
- *       {@code createdAt}, {@code updatedAt}):
- *       proceden de {@code user_profile_details}.</li>
- *   <li>Listas de capacidades y favoritos: proceden de tablas auxiliares de {@code users}.</li>
+ * <li>Campos de identidad ({@code id}, {@code name}, {@code email},
+ * {@code userType}):
+ * proceden de la tabla {@code users}.</li>
+ * <li>Campos de perfil ({@code phone}, {@code city}, {@code province},
+ * {@code bio},
+ * {@code birthDate}, {@code avatarUrl}, {@code level}, {@code xp},
+ * {@code createdAt}, {@code updatedAt}):
+ * proceden de {@code user_profile_details}.</li>
+ * <li>Listas de capacidades y favoritos: proceden de tablas auxiliares de
+ * {@code users}.</li>
  * </ul>
  */
 public record MapItUserResponse(
 
-        /** Identificador único del usuario. */
-        UUID id,
+                /** Identificador único del usuario. */
+                UUID id,
 
-        /** Nombre visible del usuario. */
-        String name,
+                /** Nombre visible del usuario. */
+                String name,
 
-        /** Email de acceso (normalizado lowercase). */
-        String email,
+                /** Email de acceso (normalizado lowercase). */
+                String email,
 
-        /** Tipo de usuario: INDIVIDUAL, PROFESSIONAL o ENTITY. */
-        UserType userType,
+                /** Tipo de usuario: INDIVIDUAL, PROFESSIONAL o ENTITY. */
+                UserType userType,
 
-        // --- Gamificación (solo INDIVIDUAL, null para el resto) ---
+                // --- Gamificación (solo INDIVIDUAL, null para el resto) ---
 
-        /** Nivel de gamificación. Nulo para PROFESSIONAL/ENTITY. */
-        Integer level,
+                /** Nivel de gamificación. Nulo para PROFESSIONAL/ENTITY. */
+                Integer level,
 
-        /** Puntos de experiencia acumulados. Nulo para PROFESSIONAL/ENTITY. */
-        Integer xp,
+                /** Puntos de experiencia acumulados. Nulo para PROFESSIONAL/ENTITY. */
+                Integer xp,
 
-        // --- Capacidades y favoritos ---
+                // --- Capacidades y favoritos ---
 
-        /** Lista de ids de capacidades desbloqueadas. */
-        List<String> unlockedCapabilities,
+                /** Lista de ids de capacidades desbloqueadas. */
+                List<String> unlockedCapabilities,
 
-        /** Lista de ids de tipos de ubicación favoritos (solo INDIVIDUAL). */
-        List<String> favoriteLocationTypeIds,
+                /** Lista de ids de tipos de ubicación favoritos (solo INDIVIDUAL). */
+                List<Long> favoriteLocationTypeIds,
 
-        // --- Perfil personal ---
+                // --- Perfil personal ---
 
-        /** URL pública del avatar. Puede ser nula. */
-        String avatarUrl,
+                /** URL pública del avatar. Puede ser nula. */
+                String avatarUrl,
 
-        /** Teléfono de contacto. Puede ser nulo. */
-        String phone,
+                /** Teléfono de contacto. Puede ser nulo. */
+                String phone,
 
-        /** Ciudad de residencia. Puede ser nula. */
-        String city,
+                /** Ciudad de residencia. Puede ser nula. */
+                String city,
 
-        /** Provincia de residencia. Puede ser nula. */
-        String province,
+                /** Provincia de residencia. Puede ser nula. */
+                String province,
 
-        /** Descripción biográfica. Puede ser nula. */
-        String bio,
+                /** Descripción biográfica. Puede ser nula. */
+                String bio,
 
-        /** Fecha de nacimiento. Puede ser nula. */
-        LocalDate birthDate,
+                /** Fecha de nacimiento. Puede ser nula. */
+                LocalDate birthDate,
 
-        // --- Timestamps del perfil ---
+                // --- Timestamps del perfil ---
 
-        /** Fecha y hora de creación del perfil (UTC). */
-        Instant createdAt,
+                /** Fecha y hora de creación del perfil (UTC). */
+                Instant createdAt,
 
-        /** Fecha y hora de última modificación del perfil (UTC). */
-        Instant updatedAt
-) {
+                /** Fecha y hora de última modificación del perfil (UTC). */
+                Instant updatedAt) {
 }

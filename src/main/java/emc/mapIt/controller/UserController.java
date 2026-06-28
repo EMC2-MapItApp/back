@@ -19,22 +19,27 @@ import java.util.UUID;
 /**
  * Controlador REST para la gestión de usuarios en la plataforma MapIt.
  * <p>
- * Proporciona endpoints para consultar perfiles, actualizar información personal,
- * gestionar capacidades desbloqueadas y administrar recursos relacionados con el usuario
+ * Proporciona endpoints para consultar perfiles, actualizar información
+ * personal,
+ * gestionar capacidades desbloqueadas y administrar recursos relacionados con
+ * el usuario
  * como favoritos, estadísticas y publicaciones.
  * </p>
  *
  * <h3>Tipos de Usuario</h3>
  * <ul>
- *   <li><strong>INDIVIDUAL</strong>: Usuario con gamificación (nivel, XP, favoritos)</li>
- *   <li><strong>PROFESSIONAL</strong>: Usuario profesional que puede crear lugares</li>
- *   <li><strong>ENTITY</strong>: Entidad/empresa que puede crear lugares</li>
+ * <li><strong>INDIVIDUAL</strong>: Usuario con gamificación (nivel, XP,
+ * favoritos)</li>
+ * <li><strong>PROFESSIONAL</strong>: Usuario profesional que puede crear
+ * lugares</li>
+ * <li><strong>ENTITY</strong>: Entidad/empresa que puede crear lugares</li>
  * </ul>
  *
  * <h3>Autenticación</h3>
  * <p>
  * Muchos endpoints requieren autenticación mediante token JWT en el header
- * <code>Authorization</code>. Los usuarios solo pueden modificar su propia información.
+ * <code>Authorization</code>. Los usuarios solo pueden modificar su propia
+ * información.
  * </p>
  *
  * @author MapIt Development Team
@@ -85,25 +90,27 @@ public class UserController {
     /**
      * Actualiza campos editables del perfil del usuario.
      * <p>
-     * Permite modificar nombre, avatar y ubicaciones favoritas (solo para usuarios individuales).
+     * Permite modificar nombre, avatar y ubicaciones favoritas (solo para usuarios
+     * individuales).
      * El usuario debe estar autenticado y solo puede modificar su propio perfil.
      * </p>
      *
-     * @param id identificador del usuario a actualizar
-     * @param request datos a actualizar, todos los campos son opcionales
+     * @param id            identificador del usuario a actualizar
+     * @param request       datos a actualizar, todos los campos son opcionales
      * @param authorization header de autorización con token JWT
      * @return {@link MapItUserResponse} con los datos actualizados
      * @throws ApiException con código FORBIDDEN si intenta modificar otro usuario
      * @throws ApiException con código NOT_FOUND si el usuario no existe
-     * @throws ApiException con código UNPROCESSABLE_ENTITY si los datos son inválidos
+     * @throws ApiException con código UNPROCESSABLE_ENTITY si los datos son
+     *                      inválidos
      *
      * @see UserPatchRequest
      * @see UserService#updateUser(UUID, UserPatchRequest)
      */
     @PatchMapping("/{id}")
     public MapItUserResponse patchUser(@PathVariable UUID id,
-                                       @Valid @RequestBody UserPatchRequest request,
-                                       @RequestHeader(name = "Authorization", required = false) String authorization) {
+            @Valid @RequestBody UserPatchRequest request,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Actualización de usuario id={}", id);
         ensureSameUser(id, authorization);
         log.info("Usuario a actualizar: {}", request);
@@ -135,12 +142,13 @@ public class UserController {
     /**
      * Desbloquea una nueva capacidad para el usuario.
      * <p>
-     * Solo usuarios autenticados pueden desbloquear capacidades en su propio perfil.
+     * Solo usuarios autenticados pueden desbloquear capacidades en su propio
+     * perfil.
      * La capacidad se añade si es válida y no estaba ya desbloqueada.
      * </p>
      *
-     * @param id identificador del usuario
-     * @param capabilityId identificador de la capacidad a desbloquear
+     * @param id            identificador del usuario
+     * @param capabilityId  identificador de la capacidad a desbloquear
      * @param authorization header de autorización con token JWT
      * @return lista actualizada de capacidades desbloqueadas
      * @throws ApiException con código FORBIDDEN si intenta modificar otro usuario
@@ -151,8 +159,8 @@ public class UserController {
      */
     @PostMapping("/{id}/capabilities/{capabilityId}")
     public List<String> unlockCapability(@PathVariable UUID id,
-                                         @PathVariable String capabilityId,
-                                         @RequestHeader(name = "Authorization", required = false) String authorization) {
+            @PathVariable String capabilityId,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Desbloqueo capability={} para usuario id={}", capabilityId, id);
         ensureSameUser(id, authorization);
 
@@ -164,7 +172,8 @@ public class UserController {
     /**
      * Devuelve los hitos y logros del usuario.
      * <p>
-     * <strong>Estado:</strong> Endpoint en desarrollo. Actualmente devuelve lista vacía.
+     * <strong>Estado:</strong> Endpoint en desarrollo. Actualmente devuelve lista
+     * vacía.
      * Se integrará con el servicio de gamificación cuando esté disponible.
      * </p>
      *
@@ -190,7 +199,8 @@ public class UserController {
     /**
      * Devuelve el lugar asociado al usuario (solo para profesionales y entidades).
      * <p>
-     * <strong>Estado:</strong> Endpoint en desarrollo. Los usuarios individuales no pueden tener lugares.
+     * <strong>Estado:</strong> Endpoint en desarrollo. Los usuarios individuales no
+     * pueden tener lugares.
      * Se integrará con el servicio de lugares cuando esté disponible.
      * </p>
      *
@@ -225,12 +235,14 @@ public class UserController {
     /**
      * Devuelve las publicaciones creadas por el usuario.
      * <p>
-     * <strong>Estado:</strong> Endpoint en desarrollo. Permite filtrar por publicaciones activas.
+     * <strong>Estado:</strong> Endpoint en desarrollo. Permite filtrar por
+     * publicaciones activas.
      * Se integrará con el servicio de publicaciones cuando esté disponible.
      * </p>
      *
-     * @param id identificador del usuario
-     * @param activeOnly si true, solo devuelve publicaciones activas (por defecto: true)
+     * @param id         identificador del usuario
+     * @param activeOnly si true, solo devuelve publicaciones activas (por defecto:
+     *                   true)
      * @return lista de publicaciones del usuario
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      *
@@ -239,7 +251,7 @@ public class UserController {
      */
     @GetMapping("/{id}/publications")
     public List<Object> getUserPublications(@PathVariable UUID id,
-                                            @RequestParam(defaultValue = "true") boolean activeOnly) {
+            @RequestParam(defaultValue = "true") boolean activeOnly) {
         log.debug("Lectura de publicaciones usuario id={}, activeOnly={}", id, activeOnly);
 
         // Verificar que el usuario existe
@@ -262,15 +274,18 @@ public class UserController {
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      *
      * @return Map con las siguientes claves:
-     * <ul>
-     *   <li><code>level</code>: nivel actual (0 si no aplica)</li>
-     *   <li><code>xp</code>: puntos de experiencia (0 si no aplica)</li>
-     *   <li><code>userType</code>: tipo de usuario en minúsculas</li>
-     *   <li><code>capabilitiesCount</code>: número de capacidades desbloqueadas</li>
-     *   <li><code>favoritesCount</code>: número de tipos de ubicación favoritos</li>
-     *   <li><code>hasGamification</code>: si tiene sistema de gamificación activo</li>
-     *   <li><code>canCreatePlaces</code>: si puede crear lugares</li>
-     * </ul>
+     *         <ul>
+     *         <li><code>level</code>: nivel actual (0 si no aplica)</li>
+     *         <li><code>xp</code>: puntos de experiencia (0 si no aplica)</li>
+     *         <li><code>userType</code>: tipo de usuario en minúsculas</li>
+     *         <li><code>capabilitiesCount</code>: número de capacidades
+     *         desbloqueadas</li>
+     *         <li><code>favoritesCount</code>: número de tipos de ubicación
+     *         favoritos</li>
+     *         <li><code>hasGamification</code>: si tiene sistema de gamificación
+     *         activo</li>
+     *         <li><code>canCreatePlaces</code>: si puede crear lugares</li>
+     *         </ul>
      */
     @GetMapping("/{id}/stats")
     public Map<String, Object> getUserStats(@PathVariable UUID id) {
@@ -286,8 +301,7 @@ public class UserController {
                 "capabilitiesCount", userResponse.unlockedCapabilities().size(),
                 "favoritesCount", userResponse.favoriteLocationTypeIds().size(),
                 "hasGamification", user.hasGamification(),
-                "canCreatePlaces", user.canCreatePlaces()
-        );
+                "canCreatePlaces", user.canCreatePlaces());
     }
 
     /**
@@ -302,13 +316,14 @@ public class UserController {
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      *
      * @return Map con las siguientes claves:
-     * <ul>
-     *   <li><code>id</code>: identificador único</li>
-     *   <li><code>name</code>: nombre público</li>
-     *   <li><code>userType</code>: tipo de usuario en minúsculas</li>
-     *   <li><code>level</code>: nivel actual (0 si no aplica)</li>
-     *   <li><code>avatarUrl</code>: URL del avatar (cadena vacía si no tiene)</li>
-     * </ul>
+     *         <ul>
+     *         <li><code>id</code>: identificador único</li>
+     *         <li><code>name</code>: nombre público</li>
+     *         <li><code>userType</code>: tipo de usuario en minúsculas</li>
+     *         <li><code>level</code>: nivel actual (0 si no aplica)</li>
+     *         <li><code>avatarUrl</code>: URL del avatar (cadena vacía si no
+     *         tiene)</li>
+     *         </ul>
      */
     @GetMapping("/{id}/profile")
     public Map<String, Object> getPublicProfile(@PathVariable UUID id) {
@@ -322,31 +337,33 @@ public class UserController {
                 "name", userResponse.name(),
                 "userType", userResponse.userType().toString().toLowerCase(),
                 "level", userResponse.level() != null ? userResponse.level() : 0,
-                "avatarUrl", userResponse.avatarUrl() != null ? userResponse.avatarUrl() : ""
-        );
+                "avatarUrl", userResponse.avatarUrl() != null ? userResponse.avatarUrl() : "");
     }
 
     /**
      * Añade un tipo de ubicación a la lista de favoritos del usuario.
      * <p>
-     * Solo disponible para usuarios individuales con sistema de gamificación activo.
+     * Solo disponible para usuarios individuales con sistema de gamificación
+     * activo.
      * El tipo de ubicación debe ser válido según el nivel del usuario.
      * </p>
      *
-     * @param id identificador del usuario
+     * @param id             identificador del usuario
      * @param locationTypeId identificador del tipo de ubicación a añadir
-     * @param authorization header de autorización con token JWT
+     * @param authorization  header de autorización con token JWT
      * @return lista actualizada de tipos de ubicación favoritos
-     * @throws ApiException con código FORBIDDEN si no es usuario individual o intenta modificar otro usuario
+     * @throws ApiException con código FORBIDDEN si no es usuario individual o
+     *                      intenta modificar otro usuario
      * @throws ApiException con código NOT_FOUND si el usuario no existe
-     * @throws ApiException con código UNPROCESSABLE_ENTITY si el tipo requiere mayor nivel
+     * @throws ApiException con código UNPROCESSABLE_ENTITY si el tipo requiere
+     *                      mayor nivel
      *
      * @see UserService#updateUser(UUID, UserPatchRequest)
      */
     @PostMapping("/{id}/favorites/{locationTypeId}")
-    public List<String> addFavoriteLocationType(@PathVariable UUID id,
-                                                @PathVariable String locationTypeId,
-                                                @RequestHeader(name = "Authorization", required = false) String authorization) {
+    public List<Long> addFavoriteLocationType(@PathVariable UUID id,
+            @PathVariable Long locationTypeId,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Añadiendo locationTypeId={} a favoritos de usuario id={}", locationTypeId, id);
         ensureSameUser(id, authorization);
 
@@ -359,7 +376,7 @@ public class UserController {
         }
 
         // Crear UserPatchRequest con la nueva lista de favoritos
-        List<String> currentFavorites = userService.toResponse(user).favoriteLocationTypeIds();
+        List<Long> currentFavorites = userService.toResponse(user).favoriteLocationTypeIds();
         if (!currentFavorites.contains(locationTypeId)) {
             currentFavorites.add(locationTypeId);
 
@@ -384,23 +401,25 @@ public class UserController {
     /**
      * Elimina un tipo de ubicación de la lista de favoritos del usuario.
      * <p>
-     * Solo disponible para usuarios individuales con sistema de gamificación activo.
+     * Solo disponible para usuarios individuales con sistema de gamificación
+     * activo.
      * Si el tipo de ubicación no está en favoritos, no produce error.
      * </p>
      *
-     * @param id identificador del usuario
+     * @param id             identificador del usuario
      * @param locationTypeId identificador del tipo de ubicación a eliminar
-     * @param authorization header de autorización con token JWT
+     * @param authorization  header de autorización con token JWT
      * @return lista actualizada de tipos de ubicación favoritos
-     * @throws ApiException con código FORBIDDEN si no es usuario individual o intenta modificar otro usuario
+     * @throws ApiException con código FORBIDDEN si no es usuario individual o
+     *                      intenta modificar otro usuario
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      *
      * @see UserService#updateUser(UUID, UserPatchRequest)
      */
     @DeleteMapping("/{id}/favorites/{locationTypeId}")
-    public List<String> removeFavoriteLocationType(@PathVariable UUID id,
-                                                   @PathVariable String locationTypeId,
-                                                   @RequestHeader(name = "Authorization", required = false) String authorization) {
+    public List<Long> removeFavoriteLocationType(@PathVariable UUID id,
+            @PathVariable Long locationTypeId,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Eliminando locationTypeId={} de favoritos de usuario id={}", locationTypeId, id);
         ensureSameUser(id, authorization);
 
@@ -412,7 +431,7 @@ public class UserController {
                     HttpStatus.FORBIDDEN);
         }
 
-        List<String> currentFavorites = userService.toResponse(user).favoriteLocationTypeIds();
+        List<Long> currentFavorites = userService.toResponse(user).favoriteLocationTypeIds();
         if (currentFavorites.remove(locationTypeId)) {
             UserPatchRequest patch = new UserPatchRequest(
                     null, // name
@@ -441,7 +460,7 @@ public class UserController {
      * </p>
      *
      * @param requestedUserId ID del usuario que se intenta modificar
-     * @param authorization header de autorización con token JWT
+     * @param authorization   header de autorización con token JWT
      * @throws ApiException con código FORBIDDEN si los IDs no coinciden
      * @throws ApiException si el token es inválido o ha expirado
      *

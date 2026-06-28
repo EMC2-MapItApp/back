@@ -24,11 +24,11 @@ public class MapItUser {
     private String email;
     private String passwordHash;
     private UserType userType;
-    private Integer level;           // ✅ Añadido
-    private Integer xp;              // ✅ Añadido
-    private String avatarUrl;        // ✅ Añadido
+    private Integer level; // ✅ Añadido
+    private Integer xp; // ✅ Añadido
+    private String avatarUrl; // ✅ Añadido
     private Set<String> unlockedCapabilities;
-    private Set<String> favoriteLocationTypeIds;
+    private Set<Long> favoriteLocationTypeIds;
     private String phone;
     private String city;
     private String province;
@@ -53,8 +53,6 @@ public class MapItUser {
             this.xp = 0;
         }
     }
-
-
 
     // ✅ Métodos de utilidad adicionales
 
@@ -92,7 +90,7 @@ public class MapItUser {
     /**
      * Añade un tipo de ubicación favorito (solo para individuos).
      */
-    public boolean addFavoriteLocationType(String locationTypeId) {
+    public boolean addFavoriteLocationType(Long locationTypeId) {
         if (userType != UserType.PARTICULAR) {
             return false;
         }

@@ -51,4 +51,6 @@ mapit:
   logging:
     level:
       emc.mapIt.repository: DEBUG
+      emc.mapIt.service: DEBUG
+      emc.mapIt.controller: DEBUG
       # org.springframework.data.jpa: DEBUG

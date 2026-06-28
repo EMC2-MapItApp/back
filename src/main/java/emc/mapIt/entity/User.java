@@ -29,8 +29,8 @@ public class User {
 
     @ElementCollection
     @CollectionTable(name = "user_favorite_location_types", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "location_type_id", length = 100)
-    private List<String> favoriteLocationTypeIds = new ArrayList<>();
+    @Column(name = "location_type_id")
+    private List<Long> favoriteLocationTypeIds = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "user_type", nullable = false, length = 30)
@@ -98,11 +98,11 @@ public class User {
         this.unlockedCapabilities = unlockedCapabilities == null ? new ArrayList<>() : unlockedCapabilities;
     }
 
-    public List<String> getFavoriteLocationTypeIds() {
+    public List<Long> getFavoriteLocationTypeIds() {
         return favoriteLocationTypeIds;
     }
 
-    public void setFavoriteLocationTypeIds(List<String> favoriteLocationTypeIds) {
+    public void setFavoriteLocationTypeIds(List<Long> favoriteLocationTypeIds) {
         this.favoriteLocationTypeIds = favoriteLocationTypeIds == null ? new ArrayList<>() : favoriteLocationTypeIds;
     }
 }
