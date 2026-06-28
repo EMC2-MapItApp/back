@@ -27,6 +27,16 @@ public interface PublicationRepository extends JpaRepository<Publication, Long> 
     List<Publication> findByAuthorAndActiveTrue(User author);
 
     /**
+     * Busca publicaciones activas ordenadas por fecha de inicio descendente.
+     */
+    List<Publication> findByActiveTrueOrderByStartDateDesc();
+
+    /**
+     * Busca publicaciones activas cuya fecha de fin ya ha pasado.
+     */
+    List<Publication> findByActiveTrueAndEndDateBefore(ZonedDateTime dateTime);
+
+    /**
      * Busca publicaciones por tipo.
      */
     List<Publication> findByPublicationType(PublicationType publicationType);

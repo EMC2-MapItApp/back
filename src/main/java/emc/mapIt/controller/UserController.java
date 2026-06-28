@@ -3,8 +3,10 @@ package emc.mapIt.controller;
 import emc.mapIt.domain.MapItUser;
 import emc.mapIt.dto.UserPatchRequest;
 import emc.mapIt.dto.MapItUserResponse;
+import emc.mapIt.dto.PublicationResponse;
 import emc.mapIt.exception.ApiException;
 import emc.mapIt.service.AuthService;
+import emc.mapIt.service.PublicationService;
 import emc.mapIt.service.UserService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -54,6 +56,7 @@ public class UserController {
 
     private final UserService userService;
     private final AuthService authService;
+    private final PublicationService publicationService;
 
     /**
      * Constructor para inyección de dependencias.
@@ -61,9 +64,10 @@ public class UserController {
      * @param userService servicio de gestión de usuarios
      * @param authService servicio de autenticación
      */
-    public UserController(UserService userService, AuthService authService) {
+    public UserController(UserService userService, AuthService authService, PublicationService publicationService) {
         this.userService = userService;
         this.authService = authService;
+        this.publicationService = publicationService;
     }
 
     /**
@@ -235,9 +239,8 @@ public class UserController {
     /**
      * Devuelve las publicaciones creadas por el usuario.
      * <p>
-     * <strong>Estado:</strong> Endpoint en desarrollo. Permite filtrar por
-     * publicaciones activas.
-     * Se integrará con el servicio de publicaciones cuando esté disponible.
+     * Devuelve las publicaciones persistidas en base de datos y permite filtrar
+     * por publicaciones activas.
      * </p>
      *
      * @param id         identificador del usuario
@@ -246,20 +249,14 @@ public class UserController {
      * @return lista de publicaciones del usuario
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      *
-     * @deprecated Este método está en desarrollo
-     * @todo Integrar con PublicationService
+     * @return lista de publicaciones serializables
      */
     @GetMapping("/{id}/publications")
-    public List<Object> getUserPublications(@PathVariable UUID id,
+    public List<PublicationResponse> getUserPublications(@PathVariable UUID id,
             @RequestParam(defaultValue = "true") boolean activeOnly) {
         log.debug("Lectura de publicaciones usuario id={}, activeOnly={}", id, activeOnly);
-
-        // Verificar que el usuario existe
         userService.getByIdOrThrow(id);
-
-        // TODO: Integrar con PublicationService
-        // return publicationService.findByAuthor(id, activeOnly);
-        return List.of(); // Placeholder
+        return publicationService.findByAuthor(id, activeOnly);
     }
 
     /**
