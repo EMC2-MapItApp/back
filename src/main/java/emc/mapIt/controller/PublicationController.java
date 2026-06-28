@@ -1,6 +1,7 @@
 package emc.mapIt.controller;
 
 import emc.mapIt.dto.CreatePublicationRequest;
+import emc.mapIt.dto.PublicationEnrollmentResponse;
 import emc.mapIt.dto.PublicationResponse;
 import emc.mapIt.service.AuthService;
 import emc.mapIt.service.PublicationService;
@@ -108,5 +109,21 @@ public class PublicationController {
         log.info("Solicitud de borrado definitivo de publicación id={}", id);
         publicationService.deleteById(id, authService.requireUserId(authorization));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Inscribe al usuario autenticado en una publicación.
+     *
+     * @param id            identificador de la publicación
+     * @param authorization cabecera Authorization con JWT
+     * @return estado actualizado de ocupación
+     */
+    @PostMapping("/{id}/enroll")
+    public ResponseEntity<PublicationEnrollmentResponse> enroll(@PathVariable Long id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Solicitud de inscripción publicationId={}", id);
+        PublicationEnrollmentResponse response = publicationService.enroll(id,
+                authService.requireUserId(authorization));
+        return ResponseEntity.ok(response);
     }
 }

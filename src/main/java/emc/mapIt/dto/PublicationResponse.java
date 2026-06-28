@@ -15,45 +15,48 @@ import java.util.UUID;
  * </p>
  */
 public record PublicationResponse(
-        /** Identificador único de la publicación. */
-        Long id,
+                /** Identificador único de la publicación. */
+                Long id,
 
-        /** Identificador del autor. */
-        UUID authorId,
+                /** Identificador del autor. */
+                UUID authorId,
 
-        /** Tipo de publicación persistida. */
-        PublicationType publicationType,
+                /** Tipo de publicación persistida. */
+                PublicationType publicationType,
 
-        /** Id del lugar asociado, si existe. */
-        Long placeId,
+                /** Id del lugar asociado, si existe. */
+                Long placeId,
 
-        /** Id del tipo de ubicación. */
-        Long locationTypeId,
+                /** Id del tipo de ubicación. */
+                Long locationTypeId,
 
-        /** Título visible. */
-        String title,
+                /** Título visible. */
+                String title,
 
-        /** Descripción opcional. */
-        String description,
+                /** Descripción opcional. */
+                String description,
 
-        /** Fecha y hora de inicio con zona. */
-        ZonedDateTime startDate,
+                /** Fecha y hora de inicio con zona. */
+                ZonedDateTime startDate,
 
-        /** Fecha y hora de fin con zona. */
-        ZonedDateTime endDate,
+                /** Fecha y hora de fin con zona. */
+                ZonedDateTime endDate,
 
-        /** Latitud persistida. */
-        BigDecimal lat,
+                /** Latitud persistida. */
+                BigDecimal lat,
 
-        /** Longitud persistida. */
-        BigDecimal lng,
+                /** Longitud persistida. */
+                BigDecimal lng,
 
-        /** Nivel mínimo requerido. */
-        Integer requiredLevel,
+                /** Nivel mínimo requerido. */
+                Integer requiredLevel,
 
-        /** Metadatos JSONB. */
-        Map<String, Object> metadata,
+                /** Metadatos JSONB. */
+                Map<String, Object> metadata,
 
-        /** Estado activo de la publicación. */
-        Boolean active) {
+                /** Número actual de inscritos/apuntados. */
+                Long occupiedSlots,
+
+                /** Estado activo de la publicación. */
+                Boolean active) {
 }

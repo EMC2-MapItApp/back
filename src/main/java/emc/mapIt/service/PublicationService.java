@@ -1,13 +1,16 @@
 package emc.mapIt.service;
 
 import emc.mapIt.dto.CreatePublicationRequest;
+import emc.mapIt.dto.PublicationEnrollmentResponse;
 import emc.mapIt.dto.PublicationResponse;
 import emc.mapIt.entity.LocationType;
 import emc.mapIt.entity.Publication;
+import emc.mapIt.entity.PublicationEnrollment;
 import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
 import emc.mapIt.mapper.PublicationMapper;
+import emc.mapIt.repository.PublicationEnrollmentRepository;
 import emc.mapIt.repository.LocationTypeRepository;
 import emc.mapIt.repository.PublicationRepository;
 import emc.mapIt.repository.UserRepository;
@@ -37,6 +40,7 @@ public class PublicationService {
     private static final ZoneId MADRID_ZONE = ZoneId.of("Europe/Madrid");
 
     private final PublicationRepository publicationRepository;
+    private final PublicationEnrollmentRepository publicationEnrollmentRepository;
     private final UserRepository userRepository;
     private final LocationTypeRepository locationTypeRepository;
     private final PublicationMapper publicationMapper;
@@ -45,10 +49,12 @@ public class PublicationService {
      * Constructor para inyección de dependencias.
      */
     public PublicationService(PublicationRepository publicationRepository,
+            PublicationEnrollmentRepository publicationEnrollmentRepository,
             UserRepository userRepository,
             LocationTypeRepository locationTypeRepository,
             PublicationMapper publicationMapper) {
         this.publicationRepository = publicationRepository;
+        this.publicationEnrollmentRepository = publicationEnrollmentRepository;
         this.userRepository = userRepository;
         this.locationTypeRepository = locationTypeRepository;
         this.publicationMapper = publicationMapper;
@@ -133,7 +139,7 @@ public class PublicationService {
         Publication saved = publicationRepository.save(publication);
 
         log.info("Actividad creada publicationId={} authorId={}", saved.getId(), authorId);
-        return publicationMapper.toResponse(saved);
+        return publicationMapper.toResponse(saved, 0);
     }
 
     /**
@@ -159,7 +165,8 @@ public class PublicationService {
                 : publicationRepository.findByAuthor(author);
 
         return publications.stream()
-                .map(publicationMapper::toResponse)
+                .map(publication -> publicationMapper.toResponse(publication,
+                        publicationEnrollmentRepository.countByPublicationId(publication.getId())))
                 .toList();
     }
 
@@ -182,7 +189,8 @@ public class PublicationService {
                 : publicationRepository.findAll();
 
         return publications.stream()
-                .map(publicationMapper::toResponse)
+                .map(publication -> publicationMapper.toResponse(publication,
+                        publicationEnrollmentRepository.countByPublicationId(publication.getId())))
                 .toList();
     }
 
@@ -201,7 +209,64 @@ public class PublicationService {
         }
         Publication publication = publicationRepository.findById(id)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
-        return publicationMapper.toResponse(publication);
+        long occupiedSlots = publicationEnrollmentRepository.countByPublicationId(publication.getId());
+        return publicationMapper.toResponse(publication, occupiedSlots);
+    }
+
+    /**
+     * Registra la inscripción del usuario autenticado en una publicación.
+     * <p>
+     * Reglas aplicadas:
+     * </p>
+     * <ul>
+     * <li>Un usuario solo puede apuntarse una vez por publicación.</li>
+     * <li>Si metadata.slots existe y es > 0, se aplica como aforo máximo.</li>
+     * <li>No se permite apuntarse a publicaciones inactivas/finalizadas.</li>
+     * </ul>
+     *
+     * @param publicationId id de la publicación
+     * @param userId        id del usuario autenticado
+     * @return estado actualizado de ocupación
+     */
+    public PublicationEnrollmentResponse enroll(Long publicationId, UUID userId) {
+        expireFinishedPublications();
+
+        if (publicationId == null) {
+            throw new ApiException("BAD_REQUEST", "ID de publicación requerido", HttpStatus.BAD_REQUEST);
+        }
+        if (userId == null) {
+            throw new ApiException("BAD_REQUEST", "ID de usuario requerido", HttpStatus.BAD_REQUEST);
+        }
+
+        Publication publication = publicationRepository.findById(publicationId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
+
+        if (!Boolean.TRUE.equals(publication.getActive())) {
+            throw new ApiException("CONFLICT", "La publicación ya no está activa", HttpStatus.CONFLICT);
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
+
+        boolean alreadyEnrolled = publicationEnrollmentRepository.existsByPublicationIdAndUserId(publicationId, userId);
+        if (alreadyEnrolled) {
+            throw new ApiException("CONFLICT", "Ya estás apuntado a esta publicación", HttpStatus.CONFLICT);
+        }
+
+        long occupiedSlots = publicationEnrollmentRepository.countByPublicationId(publicationId);
+        Integer maxSlots = resolveMaxSlots(publication);
+
+        if (maxSlots != null && occupiedSlots >= maxSlots) {
+            throw new ApiException("CONFLICT", "No hay plazas disponibles", HttpStatus.CONFLICT);
+        }
+
+        PublicationEnrollment enrollment = new PublicationEnrollment(publication, user, ZonedDateTime.now(MADRID_ZONE));
+        publicationEnrollmentRepository.save(enrollment);
+
+        long updatedOccupiedSlots = occupiedSlots + 1;
+        boolean full = maxSlots != null && updatedOccupiedSlots >= maxSlots;
+
+        return new PublicationEnrollmentResponse(publicationId, userId, updatedOccupiedSlots, maxSlots, full);
     }
 
     /**
@@ -237,7 +302,7 @@ public class PublicationService {
     }
 
     /**
-     * Marca como finalizadas las actividades activas con fecha de fin vencida.
+     * Marca como finalizadas las publicaciones activas con fecha de fin vencida.
      */
     private void expireFinishedPublications() {
         ZonedDateTime now = ZonedDateTime.now(MADRID_ZONE);
@@ -249,5 +314,17 @@ public class PublicationService {
         expired.forEach(publication -> publication.setActive(false));
         publicationRepository.saveAll(expired);
         log.debug("Se han marcado {} publicaciones como finalizadas", expired.size());
+    }
+
+    private Integer resolveMaxSlots(Publication publication) {
+        if (publication.getMetadata() == null)
+            return null;
+
+        Object rawSlots = publication.getMetadata().get("slots");
+        if (!(rawSlots instanceof Number number))
+            return null;
+
+        int slots = number.intValue();
+        return slots > 0 ? slots : null;
     }
 }

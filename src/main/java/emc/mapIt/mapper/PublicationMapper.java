@@ -55,7 +55,7 @@ public class PublicationMapper {
      * @param publication entidad persistida
      * @return DTO de respuesta
      */
-    public PublicationResponse toResponse(Publication publication) {
+    public PublicationResponse toResponse(Publication publication, long occupiedSlots) {
         if (publication == null) {
             return null;
         }
@@ -74,6 +74,7 @@ public class PublicationMapper {
                 publication.getLng(),
                 publication.getRequiredLevel(),
                 publication.getMetadata(),
+                occupiedSlots,
                 publication.getActive());
     }
 
