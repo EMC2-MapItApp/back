@@ -1,6 +1,7 @@
 package emc.mapIt.controller;
 
 import emc.mapIt.dto.CreatePublicationRequest;
+import emc.mapIt.dto.EnrollmentDto;
 import emc.mapIt.dto.PublicationEnrollmentResponse;
 import emc.mapIt.dto.PublicationResponse;
 import emc.mapIt.service.AuthService;
@@ -125,5 +126,32 @@ public class PublicationController {
         PublicationEnrollmentResponse response = publicationService.enroll(id,
                 authService.requireUserId(authorization));
         return ResponseEntity.ok(response);
+    }
+
+    /**
+ * Lista los usuarios inscritos en una publicación.
+ *
+ * @param id identificador de la publicación
+ * @return lista de inscritos con sus nombres
+ */
+@GetMapping("/{id}/enrollments")
+public List<EnrollmentDto> getEnrollments(@PathVariable Long id) {
+    log.debug("Lectura de inscritos publicationId={}", id);
+    return publicationService.getEnrollments(id);
+}
+
+    /**
+     * Desapunta al usuario autenticado de una publicación.
+     *
+     * @param id            identificador de la publicación
+     * @param authorization cabecera Authorization con JWT
+     * @return sin contenido
+     */
+    @DeleteMapping("/{id}/unenroll")
+    public ResponseEntity<Void> unenroll(@PathVariable Long id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Solicitud de desapuntamiento publicationId={}", id);
+        publicationService.unenroll(id, authService.requireUserId(authorization));
+        return ResponseEntity.noContent().build();
     }
 }

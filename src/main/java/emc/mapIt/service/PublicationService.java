@@ -1,6 +1,7 @@
 package emc.mapIt.service;
 
 import emc.mapIt.dto.CreatePublicationRequest;
+import emc.mapIt.dto.EnrollmentDto;
 import emc.mapIt.dto.PublicationEnrollmentResponse;
 import emc.mapIt.dto.PublicationResponse;
 import emc.mapIt.entity.LocationType;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -326,5 +328,50 @@ public class PublicationService {
 
         int slots = number.intValue();
         return slots > 0 ? slots : null;
+    }
+
+        /**
+     * Desapunta al usuario autenticado de una publicación.
+     *
+     * @param publicationId id de la publicación
+     * @param userId        id del usuario autenticado
+     */
+    public void unenroll(Long publicationId, UUID userId) {
+        if (publicationId == null) {
+            throw new ApiException("BAD_REQUEST", "ID de publicación requerido", HttpStatus.BAD_REQUEST);
+        }
+        if (userId == null) {
+            throw new ApiException("BAD_REQUEST", "ID de usuario requerido", HttpStatus.BAD_REQUEST);
+        }
+
+        Publication publication = publicationRepository.findById(publicationId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
+
+        PublicationEnrollment enrollment = publicationEnrollmentRepository
+                .findByPublicationIdAndUserId(publicationId, userId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "No estás apuntado a esta publicación", HttpStatus.NOT_FOUND));
+
+        publicationEnrollmentRepository.delete(enrollment);
+    }
+
+    /**
+     * Obtiene la lista de usuarios inscritos en una publicación.
+     *
+     * @param publicationId identificador de la publicación
+     * @return lista de DTOs con userId, userName y fecha de inscripción
+     */
+    public List<EnrollmentDto> getEnrollments(Long publicationId) {
+        return publicationEnrollmentRepository.findByPublicationId(publicationId)
+                .stream()
+                .map(enrollment -> new EnrollmentDto(
+                        enrollment.getUser().getId(),
+                        enrollment.getUser().getName(),
+                        enrollment.getCreatedAt()
+                ))
+                .sorted(Comparator.comparing(EnrollmentDto::enrolledAt).reversed())
+                .toList();
     }
 }
