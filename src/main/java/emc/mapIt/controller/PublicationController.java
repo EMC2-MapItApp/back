@@ -66,7 +66,7 @@ public class PublicationController {
      * @return vista serializable de la publicación
      */
     @GetMapping("/{id}")
-    public PublicationResponse getById(@PathVariable Long id) {
+    public PublicationResponse getById(@PathVariable String id) {
         log.debug("Lectura de publicación id={}", id);
         return publicationService.findById(id);
     }
@@ -91,7 +91,7 @@ public class PublicationController {
      * @return lista de publicaciones serializables
      */
     @GetMapping("/author/{authorId}")
-    public List<PublicationResponse> getByAuthor(@PathVariable java.util.UUID authorId,
+    public List<PublicationResponse> getByAuthor(@PathVariable String authorId,
             @RequestParam(defaultValue = "true") boolean activeOnly) {
         log.debug("Lectura de publicaciones authorId={}, activeOnly={}", authorId, activeOnly);
         return publicationService.findByAuthor(authorId, activeOnly);
@@ -105,7 +105,7 @@ public class PublicationController {
      * @return respuesta 204 sin contenido
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteById(@PathVariable Long id,
+    public ResponseEntity<Void> deleteById(@PathVariable String id,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Solicitud de borrado definitivo de publicación id={}", id);
         publicationService.deleteById(id, authService.requireUserId(authorization));
@@ -120,7 +120,7 @@ public class PublicationController {
      * @return estado actualizado de ocupación
      */
     @PostMapping("/{id}/enroll")
-    public ResponseEntity<PublicationEnrollmentResponse> enroll(@PathVariable Long id,
+    public ResponseEntity<PublicationEnrollmentResponse> enroll(@PathVariable String id,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Solicitud de inscripción publicationId={}", id);
         PublicationEnrollmentResponse response = publicationService.enroll(id,
@@ -135,7 +135,7 @@ public class PublicationController {
  * @return lista de inscritos con sus nombres
  */
 @GetMapping("/{id}/enrollments")
-public List<EnrollmentDto> getEnrollments(@PathVariable Long id) {
+public List<EnrollmentDto> getEnrollments(@PathVariable String id) {
     log.debug("Lectura de inscritos publicationId={}", id);
     return publicationService.getEnrollments(id);
 }
@@ -148,7 +148,7 @@ public List<EnrollmentDto> getEnrollments(@PathVariable Long id) {
      * @return sin contenido
      */
     @DeleteMapping("/{id}/unenroll")
-    public ResponseEntity<Void> unenroll(@PathVariable Long id,
+    public ResponseEntity<Void> unenroll(@PathVariable String id,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Solicitud de desapuntamiento publicationId={}", id);
         publicationService.unenroll(id, authService.requireUserId(authorization));

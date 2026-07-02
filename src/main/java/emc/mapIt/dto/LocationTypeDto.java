@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LocationTypeDto {
-    private Long id;
+    private String id;
     private String name;
     private String description;
 }

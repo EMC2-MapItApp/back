@@ -22,7 +22,7 @@ public class Place {
     private String description;
 
     @NotNull
-    private Long locationTypeId;
+    private String locationTypeId;
 
     @NotNull
     private BigDecimal lat;
@@ -38,7 +38,7 @@ public class Place {
     public Place() {
     }
 
-    public Place(String ownerId, String name, Long locationTypeId, BigDecimal lat, BigDecimal lng) {
+    public Place(String ownerId, String name, String locationTypeId, BigDecimal lat, BigDecimal lng) {
         this.ownerId = ownerId;
         this.name = name;
         this.locationTypeId = locationTypeId;
@@ -79,11 +79,11 @@ public class Place {
         this.description = description;
     }
 
-    public Long getLocationTypeId() {
+    public String getLocationTypeId() {
         return locationTypeId;
     }
 
-    public void setLocationTypeId(Long locationTypeId) {
+    public void setLocationTypeId(String locationTypeId) {
         this.locationTypeId = locationTypeId;
     }
 

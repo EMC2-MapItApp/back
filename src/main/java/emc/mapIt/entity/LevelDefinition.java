@@ -1,26 +1,23 @@
 package emc.mapIt.entity;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "level_definitions")
+@Document(collection = "level_definitions")
 public class LevelDefinition {
-    
+
     @Id
     private Integer level; // 0-10
-    
+
     @NotBlank
-    @Column(nullable = false)
     private String label;
-    
+
     @NotBlank
-    @Column(name = "perk_description", nullable = false, columnDefinition = "text")
     private String perkDescription;
-    
+
     @NotNull
-    @Column(name = "required_xp", nullable = false)
     private Integer requiredXp; // [0,100,250,450,700,1000,1400,1900,2500,3200,4000]
     
     // Constructores

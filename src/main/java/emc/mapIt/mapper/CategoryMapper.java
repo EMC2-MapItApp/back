@@ -8,7 +8,7 @@ import emc.mapIt.entity.MainCategory;
 import emc.mapIt.entity.SubCategory;
 import org.springframework.stereotype.Component;
 
-import java.util.stream.Collectors;
+import java.util.Collections;
 
 @Component
 public class CategoryMapper {
@@ -26,9 +26,7 @@ public class CategoryMapper {
                 subCategory.getId(),
                 subCategory.getName(),
                 subCategory.getIcon(),
-                subCategory.getLocationTypes().stream()
-                        .map(this::toDto)
-                        .collect(Collectors.toList())
+                Collections.emptyList()
         );
     }
 
@@ -38,9 +36,7 @@ public class CategoryMapper {
                 mainCategory.getName(),
                 mainCategory.getIcon(),
                 mainCategory.getColor(),
-                mainCategory.getSubCategories().stream()
-                        .map(this::toDto)
-                        .collect(Collectors.toList())
+                Collections.emptyList()
         );
     }
 }

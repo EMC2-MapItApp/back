@@ -10,7 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SubCategoryDto {
-    private Long id;
+    private String id;
     private String name;
     private String icon;
     private List<LocationTypeDto> locationTypes;

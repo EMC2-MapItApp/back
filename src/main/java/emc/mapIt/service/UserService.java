@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Servicio de aplicación para gestión de usuarios con persistencia JPA.
@@ -105,7 +104,7 @@ public class UserService {
         if (candidate.getProfileDetails() == null) {
             log.debug("Inicializando UserProfileDetails para email={}", normalizedEmail);
             candidate.attachProfileDetails(new UserProfileDetails());
-        } else if (candidate.getProfileDetails().getUser() == null) {
+        } else if (candidate.getProfileDetails() != null) {
             log.debug("Reasociando UserProfileDetails desanclado para email={}", normalizedEmail);
             candidate.attachProfileDetails(candidate.getProfileDetails());
         }
@@ -151,11 +150,11 @@ public class UserService {
      * @throws ApiException con código NOT_FOUND si no existe
      */
     @Transactional(readOnly = true)
-    public MapItUser getByIdOrThrow(UUID id) {
+    public MapItUser getByIdOrThrow(String id) {
         if (id == null) {
             throw new ApiException("BAD_REQUEST", "ID de usuario requerido", HttpStatus.BAD_REQUEST);
         }
-        User user = userRepository.findByIdWithProfile(id)
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
         return convertToDomain(user);
     }
@@ -180,12 +179,12 @@ public class UserService {
      * @throws ApiException con código UNPROCESSABLE_ENTITY si favoritos incumplen
      *                      regla de nivel
      */
-    public MapItUser updateUser(UUID id, UserPatchRequest patch) {
+    public MapItUser updateUser(String id, UserPatchRequest patch) {
         if (id == null) {
             throw new ApiException("BAD_REQUEST", "ID de usuario requerido", HttpStatus.BAD_REQUEST);
         }
 
-        User user = userRepository.findByIdWithProfile(id)
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
 
         if (patch == null) {
@@ -217,7 +216,7 @@ public class UserService {
             profileDetails.setBirthDate(patch.birthDate());
         }
         if (patch.favoriteLocationTypeIds() != null && user.getUserType() == UserType.PARTICULAR) {
-            List<Long> sanitizedFavorites = sanitizeLongList(patch.favoriteLocationTypeIds());
+            List<String> sanitizedFavorites = sanitizeLongList(patch.favoriteLocationTypeIds());
             validateFavoriteLocationTypes(sanitizedFavorites, profileDetails.getLevel());
             user.setFavoriteLocationTypeIds(new ArrayList<>(new LinkedHashSet<>(sanitizedFavorites)));
         }
@@ -239,12 +238,12 @@ public class UserService {
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      * @throws ApiException con código BAD_REQUEST si capabilityId es nulo/vacío
      */
-    public void unlockCapability(UUID id, String capabilityId) {
+    public void unlockCapability(String id, String capabilityId) {
         if (id == null) {
             throw new ApiException("BAD_REQUEST", "ID de usuario requerido", HttpStatus.BAD_REQUEST);
         }
 
-        User user = userRepository.findByIdWithProfile(id)
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
 
         if (isBlank(capabilityId)) {
@@ -280,7 +279,7 @@ public class UserService {
                 ? new ArrayList<>()
                 : new ArrayList<>(user.getUnlockedCapabilities());
 
-        List<Long> favorites = user.getFavoriteLocationTypeIds() == null
+        List<String> favorites = user.getFavoriteLocationTypeIds() == null
                 ? new ArrayList<>()
                 : new ArrayList<>(user.getFavoriteLocationTypeIds());
 
@@ -341,7 +340,7 @@ public class UserService {
                 : new LinkedHashSet<>(user.getUnlockedCapabilities());
         domain.setUnlockedCapabilities(capabilities);
 
-        Set<Long> favorites = user.getFavoriteLocationTypeIds() == null
+        Set<String> favorites = user.getFavoriteLocationTypeIds() == null
                 ? new LinkedHashSet<>()
                 : new LinkedHashSet<>(user.getFavoriteLocationTypeIds());
         domain.setFavoriteLocationTypeIds(favorites);
@@ -410,8 +409,8 @@ public class UserService {
     /**
      * Valida que favoritos cumplan restricciones de nivel.
      */
-    private void validateFavoriteLocationTypes(List<Long> locationTypeIds, Integer userLevel) {
-        for (Long locationTypeId : locationTypeIds) {
+    private void validateFavoriteLocationTypes(List<String> locationTypeIds, Integer userLevel) {
+        for (String locationTypeId : locationTypeIds) {
             LocationType locationType = locationTypeRepository.findById(locationTypeId)
                     .orElseThrow(() -> new ApiException(
                             "BAD_REQUEST",
@@ -449,12 +448,12 @@ public class UserService {
     /**
      * Limpia lista de strings: trim, sin nulls ni vacíos.
      */
-    private List<Long> sanitizeLongList(List<Long> input) {
+    private List<String> sanitizeLongList(List<String> input) {
         if (input == null) {
             return new ArrayList<>();
         }
-        List<Long> result = new ArrayList<>();
-        for (Long value : input) {
+        List<String> result = new ArrayList<>();
+        for (String value : input) {
             if (value != null) {
                 result.add(value);
             }

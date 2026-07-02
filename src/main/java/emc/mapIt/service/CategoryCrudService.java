@@ -1,11 +1,12 @@
 package emc.mapIt.service;
 
+import emc.mapIt.dto.LocationTypeDto;
 import emc.mapIt.dto.MainCategoryDto;
+import emc.mapIt.dto.SubCategoryDto;
 import emc.mapIt.entity.LocationType;
 import emc.mapIt.entity.MainCategory;
 import emc.mapIt.entity.SubCategory;
 import emc.mapIt.exception.ApiException;
-import emc.mapIt.mapper.CategoryMapper;
 import emc.mapIt.repository.LocationTypeRepository;
 import emc.mapIt.repository.MainCategoryRepository;
 import emc.mapIt.repository.SubCategoryRepository;
@@ -27,29 +28,41 @@ public class CategoryCrudService {
     private final MainCategoryRepository mainCategoryRepository;
     private final SubCategoryRepository subCategoryRepository;
     private final LocationTypeRepository locationTypeRepository;
-    private final CategoryMapper categoryMapper;
 
     public CategoryCrudService(MainCategoryRepository mainCategoryRepository,
                                SubCategoryRepository subCategoryRepository,
-                               LocationTypeRepository locationTypeRepository,
-                               CategoryMapper categoryMapper) {
+                               LocationTypeRepository locationTypeRepository) {
         this.mainCategoryRepository = mainCategoryRepository;
         this.subCategoryRepository = subCategoryRepository;
         this.locationTypeRepository = locationTypeRepository;
-        this.categoryMapper = categoryMapper;
     }
 
     @Transactional(readOnly = true)
     public List<MainCategoryDto> getCategoryTree() {
+        List<SubCategory> allSubCategories = subCategoryRepository.findAll();
+        List<LocationType> allLocationTypes = locationTypeRepository.findAll();
+
         return mainCategoryRepository.findAll().stream()
-                .map(categoryMapper::toDto)
+                .map(main -> {
+                    List<SubCategoryDto> subDtos = allSubCategories.stream()
+                            .filter(sub -> main.getId().equals(sub.getMainCategoryId()))
+                            .map(sub -> {
+                                List<LocationTypeDto> ltDtos = allLocationTypes.stream()
+                                        .filter(lt -> sub.getId().equals(lt.getSubCategoryId()))
+                                        .map(lt -> new LocationTypeDto(lt.getId(), lt.getName(), lt.getDescription()))
+                                        .collect(Collectors.toList());
+                                return new SubCategoryDto(sub.getId(), sub.getName(), sub.getIcon(), ltDtos);
+                            })
+                            .collect(Collectors.toList());
+                    return new MainCategoryDto(main.getId(), main.getName(), main.getIcon(), main.getColor(), subDtos);
+                })
                 .collect(Collectors.toList());
     }
 
     // --- MainCategory ---
 
     @Transactional(readOnly = true)
-    public MainCategory findMainCategoryById(Long id) {
+    public MainCategory findMainCategoryById(String id) {
         if (id == null) {
             throw new ApiException("BAD_REQUEST", "Main category ID is required", HttpStatus.BAD_REQUEST);
         }
@@ -67,7 +80,7 @@ public class CategoryCrudService {
         return saved;
     }
 
-    public MainCategory updateMainCategory(Long id, MainCategory patch) {
+    public MainCategory updateMainCategory(String id, MainCategory patch) {
         MainCategory existing = findMainCategoryById(id);
 
         if (patch.getName() != null && !patch.getName().isBlank()) {
@@ -85,7 +98,7 @@ public class CategoryCrudService {
         return saved;
     }
 
-    public void deleteMainCategory(Long id) {
+    public void deleteMainCategory(String id) {
         if (!mainCategoryRepository.existsById(id)) {
             throw new ApiException("NOT_FOUND", "Main category not found with id: " + id, HttpStatus.NOT_FOUND);
         }
@@ -96,7 +109,7 @@ public class CategoryCrudService {
     // --- SubCategory ---
 
     @Transactional(readOnly = true)
-    public SubCategory findSubCategoryById(Long id) {
+    public SubCategory findSubCategoryById(String id) {
         if (id == null) {
             throw new ApiException("BAD_REQUEST", "Sub category ID is required", HttpStatus.BAD_REQUEST);
         }
@@ -104,19 +117,19 @@ public class CategoryCrudService {
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Sub category not found with id: " + id, HttpStatus.NOT_FOUND));
     }
 
-    public SubCategory createSubCategory(Long mainCategoryId, SubCategory subCategory) {
+    public SubCategory createSubCategory(String mainCategoryId, SubCategory subCategory) {
         if (subCategory == null) {
             throw new ApiException("BAD_REQUEST", "Sub category data is required", HttpStatus.BAD_REQUEST);
         }
         MainCategory mainCategory = findMainCategoryById(mainCategoryId);
-        subCategory.setMainCategory(mainCategory);
+        subCategory.setMainCategoryId(mainCategory.getId());
         subCategory.setId(null);
         SubCategory saved = subCategoryRepository.save(subCategory);
         log.info("Sub category created with id={} under main category id={}", saved.getId(), mainCategoryId);
         return saved;
     }
 
-    public SubCategory updateSubCategory(Long id, SubCategory patch) {
+    public SubCategory updateSubCategory(String id, SubCategory patch) {
         SubCategory existing = findSubCategoryById(id);
 
         if (patch.getName() != null && !patch.getName().isBlank()) {
@@ -125,9 +138,9 @@ public class CategoryCrudService {
         if (patch.getIcon() != null && !patch.getIcon().isBlank()) {
             existing.setIcon(patch.getIcon());
         }
-        if (patch.getMainCategory() != null && patch.getMainCategory().getId() != null) {
-            MainCategory newMainCategory = findMainCategoryById(patch.getMainCategory().getId());
-            existing.setMainCategory(newMainCategory);
+        if (patch.getMainCategoryId() != null) {
+            findMainCategoryById(patch.getMainCategoryId()); // validate exists
+            existing.setMainCategoryId(patch.getMainCategoryId());
         }
 
         SubCategory saved = subCategoryRepository.save(existing);
@@ -135,7 +148,7 @@ public class CategoryCrudService {
         return saved;
     }
 
-    public void deleteSubCategory(Long id) {
+    public void deleteSubCategory(String id) {
         if (!subCategoryRepository.existsById(id)) {
             throw new ApiException("NOT_FOUND", "Sub category not found with id: " + id, HttpStatus.NOT_FOUND);
         }
@@ -146,7 +159,7 @@ public class CategoryCrudService {
     // --- LocationType ---
 
     @Transactional(readOnly = true)
-    public LocationType findLocationTypeById(Long id) {
+    public LocationType findLocationTypeById(String id) {
         if (id == null) {
             throw new ApiException("BAD_REQUEST", "Location type ID is required", HttpStatus.BAD_REQUEST);
         }
@@ -154,19 +167,19 @@ public class CategoryCrudService {
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Location type not found with id: " + id, HttpStatus.NOT_FOUND));
     }
 
-    public LocationType createLocationType(Long subCategoryId, LocationType locationType) {
+    public LocationType createLocationType(String subCategoryId, LocationType locationType) {
         if (locationType == null) {
             throw new ApiException("BAD_REQUEST", "Location type data is required", HttpStatus.BAD_REQUEST);
         }
         SubCategory subCategory = findSubCategoryById(subCategoryId);
-        locationType.setSubCategory(subCategory);
+        locationType.setSubCategoryId(subCategory.getId());
         locationType.setId(null);
         LocationType saved = locationTypeRepository.save(locationType);
         log.info("Location type created with id={} under sub category id={}", saved.getId(), subCategoryId);
         return saved;
     }
 
-    public LocationType updateLocationType(Long id, LocationType patch) {
+    public LocationType updateLocationType(String id, LocationType patch) {
         LocationType existing = findLocationTypeById(id);
 
         if (patch.getName() != null && !patch.getName().isBlank()) {
@@ -175,9 +188,9 @@ public class CategoryCrudService {
         if (patch.getDescription() != null && !patch.getDescription().isBlank()) {
             existing.setDescription(patch.getDescription());
         }
-        if (patch.getSubCategory() != null && patch.getSubCategory().getId() != null) {
-            SubCategory newSubCategory = findSubCategoryById(patch.getSubCategory().getId());
-            existing.setSubCategory(newSubCategory);
+        if (patch.getSubCategoryId() != null) {
+            findSubCategoryById(patch.getSubCategoryId()); // validate exists
+            existing.setSubCategoryId(patch.getSubCategoryId());
         }
 
         LocationType saved = locationTypeRepository.save(existing);
@@ -185,7 +198,7 @@ public class CategoryCrudService {
         return saved;
     }
 
-    public void deleteLocationType(Long id) {
+    public void deleteLocationType(String id) {
         if (!locationTypeRepository.existsById(id)) {
             throw new ApiException("NOT_FOUND", "Location type not found with id: " + id, HttpStatus.NOT_FOUND);
         }

@@ -98,7 +98,7 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si la categoría no existe.
      */
     @GetMapping("/main/{id}")
-    public ResponseEntity<MainCategory> getMainCategoryById(@PathVariable Long id) {
+    public ResponseEntity<MainCategory> getMainCategoryById(@PathVariable String id) {
         log.debug("Request to get main category with id={}", id);
         MainCategory mainCategory = categoryCrudService.findMainCategoryById(id);
         return ResponseEntity.ok(mainCategory);
@@ -117,7 +117,7 @@ public class CategoryController {
      * @throws ApiException si los datos proporcionados para la actualización son inválidos.
      */
     @PutMapping("/main/{id}")
-    public ResponseEntity<MainCategory> updateMainCategory(@PathVariable Long id, @RequestBody MainCategory mainCategory) {
+    public ResponseEntity<MainCategory> updateMainCategory(@PathVariable String id, @RequestBody MainCategory mainCategory) {
         log.info("Request to update main category with id={}", id);
         MainCategory updatedCategory = categoryCrudService.updateMainCategory(id, mainCategory);
         return ResponseEntity.ok(updatedCategory);
@@ -131,7 +131,7 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si la categoría no existe.
      */
     @DeleteMapping("/main/{id}")
-    public ResponseEntity<Void> deleteMainCategory(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteMainCategory(@PathVariable String id) {
         log.info("Request to delete main category with id={}", id);
         categoryCrudService.deleteMainCategory(id);
         return ResponseEntity.noContent().build();
@@ -149,7 +149,7 @@ public class CategoryController {
      * @throws ApiException si los datos de la subcategoría son inválidos o incompletos.
      */
     @PostMapping("/{mainCategoryId}/subcategories")
-    public ResponseEntity<SubCategory> createSubCategory(@PathVariable Long mainCategoryId, @RequestBody SubCategory subCategory) {
+    public ResponseEntity<SubCategory> createSubCategory(@PathVariable String mainCategoryId, @RequestBody SubCategory subCategory) {
         log.info("Request to create a new sub category '{}' under main category id={}", subCategory.getName(), mainCategoryId);
         SubCategory createdSubCategory = categoryCrudService.createSubCategory(mainCategoryId, subCategory);
         return new ResponseEntity<>(createdSubCategory, HttpStatus.CREATED);
@@ -163,7 +163,7 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si la subcategoría no existe.
      */
     @GetMapping("/subcategories/{id}")
-    public ResponseEntity<SubCategory> getSubCategoryById(@PathVariable Long id) {
+    public ResponseEntity<SubCategory> getSubCategoryById(@PathVariable String id) {
         log.debug("Request to get sub category with id={}", id);
         SubCategory subCategory = categoryCrudService.findSubCategoryById(id);
         return ResponseEntity.ok(subCategory);
@@ -183,7 +183,7 @@ public class CategoryController {
      * @throws ApiException si los datos proporcionados para la actualización son inválidos.
      */
     @PutMapping("/subcategories/{id}")
-    public ResponseEntity<SubCategory> updateSubCategory(@PathVariable Long id, @RequestBody SubCategory subCategory) {
+    public ResponseEntity<SubCategory> updateSubCategory(@PathVariable String id, @RequestBody SubCategory subCategory) {
         log.info("Request to update sub category with id={}", id);
         SubCategory updatedSubCategory = categoryCrudService.updateSubCategory(id, subCategory);
         return ResponseEntity.ok(updatedSubCategory);
@@ -197,7 +197,7 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si la subcategoría no existe.
      */
     @DeleteMapping("/subcategories/{id}")
-    public ResponseEntity<Void> deleteSubCategory(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteSubCategory(@PathVariable String id) {
         log.info("Request to delete sub category with id={}", id);
         categoryCrudService.deleteSubCategory(id);
         return ResponseEntity.noContent().build();
@@ -215,7 +215,7 @@ public class CategoryController {
      * @throws ApiException si los datos del tipo de lugar son inválidos o incompletos.
      */
     @PostMapping("/subcategories/{subCategoryId}/locationtypes")
-    public ResponseEntity<LocationType> createLocationType(@PathVariable Long subCategoryId, @RequestBody LocationType locationType) {
+    public ResponseEntity<LocationType> createLocationType(@PathVariable String subCategoryId, @RequestBody LocationType locationType) {
         log.info("Request to create a new location type '{}' under sub category id={}", locationType.getName(), subCategoryId);
         LocationType createdLocationType = categoryCrudService.createLocationType(subCategoryId, locationType);
         return new ResponseEntity<>(createdLocationType, HttpStatus.CREATED);
@@ -229,7 +229,7 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si el tipo de lugar no existe.
      */
     @GetMapping("/locationtypes/{id}")
-    public ResponseEntity<LocationType> getLocationTypeById(@PathVariable Long id) {
+    public ResponseEntity<LocationType> getLocationTypeById(@PathVariable String id) {
         log.debug("Request to get location type with id={}", id);
         LocationType locationType = categoryCrudService.findLocationTypeById(id);
         return ResponseEntity.ok(locationType);
@@ -249,7 +249,7 @@ public class CategoryController {
      * @throws ApiException si los datos proporcionados para la actualización son inválidos.
      */
     @PutMapping("/locationtypes/{id}")
-    public ResponseEntity<LocationType> updateLocationType(@PathVariable Long id, @RequestBody LocationType locationType) {
+    public ResponseEntity<LocationType> updateLocationType(@PathVariable String id, @RequestBody LocationType locationType) {
         log.info("Request to update location type with id={}", id);
         LocationType updatedLocationType = categoryCrudService.updateLocationType(id, locationType);
         return ResponseEntity.ok(updatedLocationType);
@@ -263,7 +263,7 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si el tipo de lugar no existe.
      */
     @DeleteMapping("/locationtypes/{id}")
-    public ResponseEntity<Void> deleteLocationType(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteLocationType(@PathVariable String id) {
         log.info("Request to delete location type with id={}", id);
         categoryCrudService.deleteLocationType(id);
         return ResponseEntity.noContent().build();

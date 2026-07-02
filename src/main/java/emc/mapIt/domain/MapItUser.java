@@ -9,7 +9,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Modelo de dominio para usuario del sistema MapIt.
@@ -19,7 +18,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class MapItUser {
 
-    private UUID id;
+    private String id;
     private String name;
     private String email;
     private String passwordHash;
@@ -28,7 +27,7 @@ public class MapItUser {
     private Integer xp; // ✅ Añadido
     private String avatarUrl; // ✅ Añadido
     private Set<String> unlockedCapabilities;
-    private Set<Long> favoriteLocationTypeIds;
+    private Set<String> favoriteLocationTypeIds;
     private String phone;
     private String city;
     private String province;
@@ -38,7 +37,7 @@ public class MapItUser {
     private Instant updatedAt;
 
     // Constructor principal
-    public MapItUser(UUID id, String name, String email, String passwordHash, UserType userType) {
+    public MapItUser(String id, String name, String email, String passwordHash, UserType userType) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -90,7 +89,7 @@ public class MapItUser {
     /**
      * Añade un tipo de ubicación favorito (solo para individuos).
      */
-    public boolean addFavoriteLocationType(Long locationTypeId) {
+    public boolean addFavoriteLocationType(String locationTypeId) {
         if (userType != UserType.PARTICULAR) {
             return false;
         }

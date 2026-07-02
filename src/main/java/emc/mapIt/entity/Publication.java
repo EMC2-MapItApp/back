@@ -1,76 +1,56 @@
 package emc.mapIt.entity;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
-@Entity
-@Table(name = "publications")
+@Document(collection = "publications")
 public class Publication {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", nullable = false)
-    private User author;
+    private String authorId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "publication_type", nullable = false)
     private PublicationType publicationType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "place_id")
-    private Place place; // nullable para individual events
+    private String placeId; // nullable para individual events
 
     @NotNull
-    @Column(name = "location_type_id", nullable = false)
-    private Long locationTypeId;
+    private String locationTypeId;
 
     @NotBlank
-    @Column(nullable = false)
     private String title;
 
-    @Column(columnDefinition = "text")
     private String description;
 
     @NotNull
-    @Column(name = "start_date", nullable = false)
     private ZonedDateTime startDate;
 
-    @Column(name = "end_date")
     private ZonedDateTime endDate; // null = indefinite promotion
 
-    @Column(precision = 10, scale = 8)
     private BigDecimal lat; // nullable, para individual events
 
-    @Column(precision = 11, scale = 8)
     private BigDecimal lng; // nullable, para individual events
 
-    @Column(name = "required_level")
     private Integer requiredLevel = 0; // default 0 = visible to all
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
     private Map<String, Object> metadata;
 
-    @Column(name = "active")
     private Boolean active = true;
 
     // Constructores
     public Publication() {
     }
 
-    public Publication(User author, PublicationType publicationType, Long locationTypeId,
+    public Publication(String authorId, PublicationType publicationType, String locationTypeId,
             String title, ZonedDateTime startDate) {
-        this.author = author;
+        this.authorId = authorId;
         this.publicationType = publicationType;
         this.locationTypeId = locationTypeId;
         this.title = title;
@@ -78,20 +58,20 @@ public class Publication {
     }
 
     // Getters y Setters
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public User getAuthor() {
-        return author;
+    public String getAuthorId() {
+        return authorId;
     }
 
-    public void setAuthor(User author) {
-        this.author = author;
+    public void setAuthorId(String authorId) {
+        this.authorId = authorId;
     }
 
     public PublicationType getPublicationType() {
@@ -102,19 +82,19 @@ public class Publication {
         this.publicationType = publicationType;
     }
 
-    public Place getPlace() {
-        return place;
+    public String getPlaceId() {
+        return placeId;
     }
 
-    public void setPlace(Place place) {
-        this.place = place;
+    public void setPlaceId(String placeId) {
+        this.placeId = placeId;
     }
 
-    public Long getLocationTypeId() {
+    public String getLocationTypeId() {
         return locationTypeId;
     }
 
-    public void setLocationTypeId(Long locationTypeId) {
+    public void setLocationTypeId(String locationTypeId) {
         this.locationTypeId = locationTypeId;
     }
 

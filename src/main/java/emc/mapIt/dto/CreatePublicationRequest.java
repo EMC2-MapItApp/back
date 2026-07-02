@@ -26,10 +26,10 @@ import java.util.Map;
 public record CreatePublicationRequest(
 
         /** Id del lugar asociado, nulo para actividades libres. */
-        Long placeId,
+        String placeId,
 
         /** Id numérico del tipo de ubicación. */
-        @NotNull Long locationTypeId,
+        @NotNull String locationTypeId,
 
         /** Título visible de la actividad. */
         @NotBlank String title,

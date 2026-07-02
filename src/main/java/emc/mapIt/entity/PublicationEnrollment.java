@@ -1,61 +1,55 @@
 package emc.mapIt.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZonedDateTime;
 
-@Entity
-@Table(name = "publication_enrollments", uniqueConstraints = @UniqueConstraint(name = "uk_publication_enrollment_publication_user", columnNames = {
-        "publication_id", "user_id"
-}))
+@Document(collection = "publication_enrollments")
+@CompoundIndex(name = "uk_enrollment", def = "{'publicationId': 1, 'userId': 1}", unique = true)
 public class PublicationEnrollment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "publication_id", nullable = false)
-    private Publication publication;
+    private String publicationId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private String userId;
 
-    @Column(name = "created_at", nullable = false)
     private ZonedDateTime createdAt;
 
     public PublicationEnrollment() {
     }
 
-    public PublicationEnrollment(Publication publication, User user, ZonedDateTime createdAt) {
-        this.publication = publication;
-        this.user = user;
+    public PublicationEnrollment(String publicationId, String userId, ZonedDateTime createdAt) {
+        this.publicationId = publicationId;
+        this.userId = userId;
         this.createdAt = createdAt;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public Publication getPublication() {
-        return publication;
+    public String getPublicationId() {
+        return publicationId;
     }
 
-    public void setPublication(Publication publication) {
-        this.publication = publication;
+    public void setPublicationId(String publicationId) {
+        this.publicationId = publicationId;
     }
 
-    public User getUser() {
-        return user;
+    public String getUserId() {
+        return userId;
     }
 
-    public void setUser(User user) {
-        this.user = user;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 
     public ZonedDateTime getCreatedAt() {

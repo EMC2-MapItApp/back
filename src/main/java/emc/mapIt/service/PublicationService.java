@@ -25,7 +25,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Servicio de aplicación para publicaciones persistidas.
@@ -79,7 +78,7 @@ public class PublicationService {
      * @param request  payload de creación
      * @return publicación persistida
      */
-    public PublicationResponse createEvent(UUID authorId, CreatePublicationRequest request) {
+    public PublicationResponse createEvent(String authorId, CreatePublicationRequest request) {
         if (authorId == null) {
             throw new ApiException("BAD_REQUEST", "ID de usuario requerido", HttpStatus.BAD_REQUEST);
         }
@@ -152,19 +151,16 @@ public class PublicationService {
      * @return lista de publicaciones serializables
      */
     @Transactional(readOnly = true)
-    public List<PublicationResponse> findByAuthor(UUID authorId, boolean activeOnly) {
+    public List<PublicationResponse> findByAuthor(String authorId, boolean activeOnly) {
         expireFinishedPublications();
 
         if (authorId == null) {
             throw new ApiException("BAD_REQUEST", "ID de usuario requerido", HttpStatus.BAD_REQUEST);
         }
 
-        User author = userRepository.findById(authorId)
-                .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
-
         List<Publication> publications = activeOnly
-                ? publicationRepository.findByAuthorAndActiveTrue(author)
-                : publicationRepository.findByAuthor(author);
+                ? publicationRepository.findByAuthorIdAndActiveTrue(authorId)
+                : publicationRepository.findByAuthorId(authorId);
 
         return publications.stream()
                 .map(publication -> publicationMapper.toResponse(publication,
@@ -203,7 +199,7 @@ public class PublicationService {
      * @return respuesta serializable
      */
     @Transactional(readOnly = true)
-    public PublicationResponse findById(Long id) {
+    public PublicationResponse findById(String id) {
         expireFinishedPublications();
 
         if (id == null) {
@@ -230,7 +226,7 @@ public class PublicationService {
      * @param userId        id del usuario autenticado
      * @return estado actualizado de ocupación
      */
-    public PublicationEnrollmentResponse enroll(Long publicationId, UUID userId) {
+    public PublicationEnrollmentResponse enroll(String publicationId, String userId) {
         expireFinishedPublications();
 
         if (publicationId == null) {
@@ -262,7 +258,7 @@ public class PublicationService {
             throw new ApiException("CONFLICT", "No hay plazas disponibles", HttpStatus.CONFLICT);
         }
 
-        PublicationEnrollment enrollment = new PublicationEnrollment(publication, user, ZonedDateTime.now(MADRID_ZONE));
+        PublicationEnrollment enrollment = new PublicationEnrollment(publication.getId(), user.getId(), ZonedDateTime.now(MADRID_ZONE));
         publicationEnrollmentRepository.save(enrollment);
 
         long updatedOccupiedSlots = occupiedSlots + 1;
@@ -277,7 +273,7 @@ public class PublicationService {
      * @param publicationId id de la publicación a eliminar
      * @param requesterId   id del usuario autenticado que solicita el borrado
      */
-    public void deleteById(Long publicationId, UUID requesterId) {
+    public void deleteById(String publicationId, String requesterId) {
         if (publicationId == null) {
             throw new ApiException("BAD_REQUEST", "ID de publicación requerido", HttpStatus.BAD_REQUEST);
         }
@@ -291,7 +287,7 @@ public class PublicationService {
         User requester = userRepository.findById(requesterId)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
 
-        boolean isAuthor = publication.getAuthor() != null && requesterId.equals(publication.getAuthor().getId());
+        boolean isAuthor = requesterId.equals(publication.getAuthorId());
         boolean isAdmin = requester.getUserType() == UserType.ADMIN;
         if (!isAuthor && !isAdmin) {
             throw new ApiException("FORBIDDEN",
@@ -336,7 +332,7 @@ public class PublicationService {
      * @param publicationId id de la publicación
      * @param userId        id del usuario autenticado
      */
-    public void unenroll(Long publicationId, UUID userId) {
+    public void unenroll(String publicationId, String userId) {
         if (publicationId == null) {
             throw new ApiException("BAD_REQUEST", "ID de publicación requerido", HttpStatus.BAD_REQUEST);
         }
@@ -363,14 +359,17 @@ public class PublicationService {
      * @param publicationId identificador de la publicación
      * @return lista de DTOs con userId, userName y fecha de inscripción
      */
-    public List<EnrollmentDto> getEnrollments(Long publicationId) {
+    public List<EnrollmentDto> getEnrollments(String publicationId) {
         return publicationEnrollmentRepository.findByPublicationId(publicationId)
                 .stream()
-                .map(enrollment -> new EnrollmentDto(
-                        enrollment.getUser().getId(),
-                        enrollment.getUser().getName(),
-                        enrollment.getCreatedAt()
-                ))
+                .map(enrollment -> {
+                    String userName = userRepository.findById(enrollment.getUserId())
+                            .map(User::getName).orElse("Unknown");
+                    return new EnrollmentDto(
+                            enrollment.getUserId(),
+                            userName,
+                            enrollment.getCreatedAt());
+                })
                 .sorted(Comparator.comparing(EnrollmentDto::enrolledAt).reversed())
                 .toList();
     }

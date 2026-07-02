@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Controlador REST para la gestión de usuarios en la plataforma MapIt.
@@ -85,7 +84,7 @@ public class UserController {
      * @see UserService#getByIdOrThrow(UUID)
      */
     @GetMapping("/{id}")
-    public MapItUserResponse getById(@PathVariable UUID id) {
+    public MapItUserResponse getById(@PathVariable String id) {
         log.debug("Lectura de usuario id={}", id);
         MapItUser user = userService.getByIdOrThrow(id);
         return userService.toResponse(user);
@@ -112,7 +111,7 @@ public class UserController {
      * @see UserService#updateUser(UUID, UserPatchRequest)
      */
     @PatchMapping("/{id}")
-    public MapItUserResponse patchUser(@PathVariable UUID id,
+    public MapItUserResponse patchUser(@PathVariable String id,
             @Valid @RequestBody UserPatchRequest request,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Actualización de usuario id={}", id);
@@ -137,7 +136,7 @@ public class UserController {
      * @see UserService#getByIdOrThrow(UUID)
      */
     @GetMapping("/{id}/capabilities")
-    public List<String> getCapabilities(@PathVariable UUID id) {
+    public List<String> getCapabilities(@PathVariable String id) {
         log.debug("Lectura de capacidades usuario id={}", id);
         MapItUser user = userService.getByIdOrThrow(id);
         return userService.toResponse(user).unlockedCapabilities();
@@ -162,7 +161,7 @@ public class UserController {
      * @see UserService#unlockCapability(UUID, String)
      */
     @PostMapping("/{id}/capabilities/{capabilityId}")
-    public List<String> unlockCapability(@PathVariable UUID id,
+    public List<String> unlockCapability(@PathVariable String id,
             @PathVariable String capabilityId,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Desbloqueo capability={} para usuario id={}", capabilityId, id);
@@ -189,7 +188,7 @@ public class UserController {
      * @todo Integrar con GamificationService
      */
     @GetMapping("/{id}/milestones")
-    public List<Object> getMilestones(@PathVariable UUID id) {
+    public List<Object> getMilestones(@PathVariable String id) {
         log.debug("Lectura de milestones usuario id={}", id);
 
         // Verificar que el usuario existe
@@ -217,7 +216,7 @@ public class UserController {
      * @todo Integrar con PlaceService
      */
     @GetMapping("/{id}/place")
-    public Map<String, Object> getUserPlace(@PathVariable UUID id) {
+    public Map<String, Object> getUserPlace(@PathVariable String id) {
         log.debug("Lectura de place usuario id={}", id);
 
         MapItUser user = userService.getByIdOrThrow(id);
@@ -252,7 +251,7 @@ public class UserController {
      * @return lista de publicaciones serializables
      */
     @GetMapping("/{id}/publications")
-    public List<PublicationResponse> getUserPublications(@PathVariable UUID id,
+    public List<PublicationResponse> getUserPublications(@PathVariable String id,
             @RequestParam(defaultValue = "true") boolean activeOnly) {
         log.debug("Lectura de publicaciones usuario id={}, activeOnly={}", id, activeOnly);
         userService.getByIdOrThrow(id);
@@ -285,7 +284,7 @@ public class UserController {
      *         </ul>
      */
     @GetMapping("/{id}/stats")
-    public Map<String, Object> getUserStats(@PathVariable UUID id) {
+    public Map<String, Object> getUserStats(@PathVariable String id) {
         log.debug("Lectura de estadísticas usuario id={}", id);
 
         MapItUser user = userService.getByIdOrThrow(id);
@@ -323,7 +322,7 @@ public class UserController {
      *         </ul>
      */
     @GetMapping("/{id}/profile")
-    public Map<String, Object> getPublicProfile(@PathVariable UUID id) {
+    public Map<String, Object> getPublicProfile(@PathVariable String id) {
         log.debug("Lectura de perfil público usuario id={}", id);
 
         MapItUser user = userService.getByIdOrThrow(id);
@@ -358,8 +357,8 @@ public class UserController {
      * @see UserService#updateUser(UUID, UserPatchRequest)
      */
     @PostMapping("/{id}/favorites/{locationTypeId}")
-    public List<Long> addFavoriteLocationType(@PathVariable UUID id,
-            @PathVariable Long locationTypeId,
+    public List<String> addFavoriteLocationType(@PathVariable String id,
+            @PathVariable String locationTypeId,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Añadiendo locationTypeId={} a favoritos de usuario id={}", locationTypeId, id);
         ensureSameUser(id, authorization);
@@ -372,8 +371,7 @@ public class UserController {
                     HttpStatus.FORBIDDEN);
         }
 
-        // Crear UserPatchRequest con la nueva lista de favoritos
-        List<Long> currentFavorites = userService.toResponse(user).favoriteLocationTypeIds();
+        List<String> currentFavorites = userService.toResponse(user).favoriteLocationTypeIds();
         if (!currentFavorites.contains(locationTypeId)) {
             currentFavorites.add(locationTypeId);
 
@@ -414,8 +412,8 @@ public class UserController {
      * @see UserService#updateUser(UUID, UserPatchRequest)
      */
     @DeleteMapping("/{id}/favorites/{locationTypeId}")
-    public List<Long> removeFavoriteLocationType(@PathVariable UUID id,
-            @PathVariable Long locationTypeId,
+    public List<String> removeFavoriteLocationType(@PathVariable String id,
+            @PathVariable String locationTypeId,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Eliminando locationTypeId={} de favoritos de usuario id={}", locationTypeId, id);
         ensureSameUser(id, authorization);
@@ -428,7 +426,7 @@ public class UserController {
                     HttpStatus.FORBIDDEN);
         }
 
-        List<Long> currentFavorites = userService.toResponse(user).favoriteLocationTypeIds();
+        List<String> currentFavorites = userService.toResponse(user).favoriteLocationTypeIds();
         if (currentFavorites.remove(locationTypeId)) {
             UserPatchRequest patch = new UserPatchRequest(
                     null, // name
@@ -463,8 +461,8 @@ public class UserController {
      *
      * @see AuthService#requireUserId(String)
      */
-    private void ensureSameUser(UUID requestedUserId, String authorization) {
-        UUID authUserId = authService.requireUserId(authorization);
+    private void ensureSameUser(String requestedUserId, String authorization) {
+        String authUserId = authService.requireUserId(authorization);
         if (!requestedUserId.equals(authUserId)) {
             throw new ApiException("FORBIDDEN", "No puedes modificar otro usuario", HttpStatus.FORBIDDEN);
         }

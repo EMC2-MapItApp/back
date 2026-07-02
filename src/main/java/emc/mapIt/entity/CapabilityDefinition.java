@@ -1,32 +1,27 @@
 package emc.mapIt.entity;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "capability_definitions")
+@Document(collection = "capability_definitions")
 public class CapabilityDefinition {
-    
+
     @Id
     private String id; // e.g. 'max_publications_5'
-    
+
     @NotBlank
-    @Column(nullable = false)
     private String label;
-    
+
     @NotBlank
-    @Column(nullable = false, columnDefinition = "text")
     private String description;
-    
-    @Column(name = "unlocks_at_level")
+
     private Integer unlocksAtLevel;
-    
-    @Column(nullable = false)
+
     private Boolean purchasable = false;
-    
-    @Column(name = "price_eur", precision = 10, scale = 2)
+
     private BigDecimal priceEur;
     
     // Constructores

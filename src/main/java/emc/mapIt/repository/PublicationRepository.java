@@ -2,29 +2,25 @@ package emc.mapIt.repository;
 
 import emc.mapIt.entity.Publication;
 import emc.mapIt.entity.PublicationType;
-import emc.mapIt.entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Repository
-public interface PublicationRepository extends JpaRepository<Publication, Long> {
+public interface PublicationRepository extends MongoRepository<Publication, String> {
 
     /**
      * Busca publicaciones por autor.
      */
-    List<Publication> findByAuthor(User author);
+    List<Publication> findByAuthorId(String authorId);
 
     /**
      * Busca publicaciones activas por autor.
      */
-    List<Publication> findByAuthorAndActiveTrue(User author);
+    List<Publication> findByAuthorIdAndActiveTrue(String authorId);
 
     /**
      * Busca publicaciones activas ordenadas por fecha de inicio descendente.
@@ -44,72 +40,33 @@ public interface PublicationRepository extends JpaRepository<Publication, Long> 
     /**
      * Busca publicaciones por tipo de ubicación.
      */
-    List<Publication> findByLocationTypeId(Long locationTypeId);
+    List<Publication> findByLocationTypeId(String locationTypeId);
 
     /**
      * Busca publicaciones por lugar específico.
      */
-    @Query("SELECT p FROM Publication p WHERE p.place.id = :placeId")
-    List<Publication> findByPlaceId(@Param("placeId") Long placeId);
+    List<Publication> findByPlaceId(String placeId);
 
     /**
      * Cuenta publicaciones activas por autor (para validar límites).
      */
-    @Query("SELECT COUNT(p) FROM Publication p WHERE p.author = :author AND p.active = true")
-    int countActiveByAuthor(@Param("author") User author);
+    int countByAuthorIdAndActiveTrue(String authorId);
 
     /**
-     * Cuenta publicaciones creadas esta semana por autor.
+     * Cuenta publicaciones creadas por autor desde una fecha.
      */
-    @Query("""
-            SELECT COUNT(p) FROM Publication p
-            WHERE p.author = :author
-            AND p.startDate >= :weekStart
-            """)
-    int countByAuthorSinceDate(@Param("author") User author, @Param("weekStart") ZonedDateTime weekStart);
+    int countByAuthorIdAndStartDateGreaterThanEqual(String authorId, ZonedDateTime weekStart);
 
     /**
-     * Busca publicaciones activas que cumplan nivel requerido.
+     * Busca publicaciones activas que cumplan nivel requerido y no hayan expirado.
      */
-    @Query("""
-            SELECT p FROM Publication p
-            WHERE p.active = true
-            AND p.requiredLevel <= :userLevel
-            AND (p.endDate IS NULL OR p.endDate > CURRENT_TIMESTAMP)
-            """)
-    List<Publication> findActiveForUserLevel(@Param("userLevel") Integer userLevel);
+    @Query("{active: true, requiredLevel: {$lte: ?0}, $or: [{endDate: null}, {endDate: {$gt: '$$NOW'}}]}")
+    List<Publication> findActiveForUserLevel(Integer userLevel);
 
     /**
-     * Busca publicaciones dentro de un radio específico.
+     * Busca publicaciones activas con coordenadas por tipo y nivel.
+     * El filtro de radio debe aplicarse en el servicio con $geoNear o cálculo en memoria.
      */
-    @Query("""
-            SELECT p FROM Publication p
-            WHERE p.active = true
-            AND p.lat IS NOT NULL AND p.lng IS NOT NULL
-            AND (6371 * acos(
-                cos(radians(:lat)) * cos(radians(p.lat)) *
-                cos(radians(p.lng) - radians(:lng)) +
-                sin(radians(:lat)) * sin(radians(p.lat))
-            )) <= :radiusKm
-            """)
-    List<Publication> findActiveWithinRadius(@Param("lat") BigDecimal lat,
-            @Param("lng") BigDecimal lng,
-            @Param("radiusKm") Double radiusKm);
-
-    /**
-     * Busca publicaciones por múltiples criterios.
-     */
-    @Query("""
-            SELECT p FROM Publication p
-            WHERE p.active = true
-            AND (:publicationType IS NULL OR p.publicationType = :publicationType)
-            AND (:locationTypeId IS NULL OR p.locationTypeId = :locationTypeId)
-            AND (:authorId IS NULL OR p.author.id = :authorId)
-            AND p.requiredLevel <= :maxLevel
-            ORDER BY p.startDate DESC
-            """)
-    List<Publication> findByCriteria(@Param("publicationType") PublicationType publicationType,
-            @Param("locationTypeId") Long locationTypeId,
-            @Param("authorId") UUID authorId,
-            @Param("maxLevel") Integer maxLevel);
+    @Query("{active: true, lat: {$exists: true}, lng: {$exists: true}, publicationType: ?0, requiredLevel: {$lte: ?1}}")
+    List<Publication> findActiveWithCoordinatesByTypeAndLevel(String publicationType, Integer maxLevel);
 }

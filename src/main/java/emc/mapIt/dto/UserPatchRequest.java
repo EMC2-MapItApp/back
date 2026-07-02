@@ -49,5 +49,5 @@ public record UserPatchRequest(
                 @Past LocalDate birthDate,
 
                 /** Lista de tipos de ubicación favoritos (solo INDIVIDUAL). */
-                List<Long> favoriteLocationTypeIds) {
+                List<String> favoriteLocationTypeIds) {
 }

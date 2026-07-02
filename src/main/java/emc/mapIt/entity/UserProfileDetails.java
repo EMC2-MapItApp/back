@@ -37,16 +37,8 @@ public class UserProfileDetails {
 
     // Getters and setters
 
-    public UUID getUserId() {
+    public String getUserId() {
         return userId;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
     }
 
     public String getPhone() {

@@ -12,7 +12,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.UUID;
 
 @Service
 /**
@@ -37,7 +36,7 @@ public class JwtService {
     /**
      * Genera token firmado con subject UUID y expiracion.
      */
-    public String generateToken(UUID userId) {
+    public String generateToken(String userId) {
         long now = Instant.now().getEpochSecond();
         String payloadRaw = userId + ":" + now + ":" + (now + expirationSeconds);
         String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadRaw.getBytes(StandardCharsets.UTF_8));
@@ -49,7 +48,7 @@ public class JwtService {
     /**
      * Extrae userId del header Authorization validando firma y expiracion.
      */
-    public UUID extractUserId(String authHeader) {
+    public String extractUserId(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new ApiException("UNAUTHORIZED", "Token ausente o invalido", HttpStatus.UNAUTHORIZED);
         }
@@ -73,7 +72,7 @@ public class JwtService {
                 throw new ApiException("UNAUTHORIZED", "Token expirado", HttpStatus.UNAUTHORIZED);
             }
             log.debug("Token valido para userId={}", values[0]);
-            return UUID.fromString(values[0]);
+            return values[0];
         } catch (ApiException ex) {
             throw ex;
         } catch (Exception ex) {

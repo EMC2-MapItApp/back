@@ -33,9 +33,9 @@ public class PublicationMapper {
      */
     public Publication toEntity(CreatePublicationRequest request, User author, Place place) {
         Publication publication = new Publication();
-        publication.setAuthor(author);
+        publication.setAuthorId(author != null ? author.getId() : null);
         publication.setPublicationType(PublicationType.EVENT);
-        publication.setPlace(place);
+        publication.setPlaceId(place != null ? place.getId() : null);
         publication.setLocationTypeId(place != null ? place.getLocationTypeId() : request.locationTypeId());
         publication.setTitle(request.title().trim());
         publication.setDescription(normalizeText(request.description()));
@@ -62,9 +62,9 @@ public class PublicationMapper {
 
         return new PublicationResponse(
                 publication.getId(),
-                publication.getAuthor() != null ? publication.getAuthor().getId() : null,
+                publication.getAuthorId(),
                 publication.getPublicationType(),
-                publication.getPlace() != null ? publication.getPlace().getId() : null,
+                publication.getPlaceId(),
                 publication.getLocationTypeId(),
                 publication.getTitle(),
                 publication.getDescription(),

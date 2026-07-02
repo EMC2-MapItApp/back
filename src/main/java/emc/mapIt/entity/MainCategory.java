@@ -1,42 +1,28 @@
 package emc.mapIt.entity;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Entity
-@Table(name = "main_categories")
+@Document(collection = "main_categories")
 public class MainCategory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @NotBlank
-    @Column(nullable = false)
     private String name;
 
     @NotBlank
-    @Column(nullable = false)
     private String icon;
 
     @NotBlank
-    @Column(nullable = false)
     private String color;
-
-    @OneToMany(
-            mappedBy = "mainCategory",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
-    private List<SubCategory> subCategories = new ArrayList<>();
 
 }

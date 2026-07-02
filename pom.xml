@@ -64,29 +64,10 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- Para trabajar con PostgreSQL + PostGIS -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-
-		<!-- MongoDB (para migración a Atlas) -->
+		<!-- MongoDB -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-mongodb</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-
-		<!-- Para PostGIS (datos geoespaciales) -->
-		<dependency>
-			<groupId>org.hibernate</groupId>
-			<artifactId>hibernate-spatial</artifactId>
-			<version>6.2.13.Final</version>
 		</dependency>
 
 		<!-- Source: https://mvnrepository.com/artifact/org.projectlombok/lombok -->

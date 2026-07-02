@@ -1,7 +1,6 @@
 package emc.mapIt.entity;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,11 +19,10 @@ public class User {
 
     private List<String> unlockedCapabilities = new ArrayList<>();
 
-    private List<Long> favoriteLocationTypeIds = new ArrayList<>();
+    private List<String> favoriteLocationTypeIds = new ArrayList<>();
 
     private UserType userType;
 
-    @DBRef(lazy = true)
     private UserProfileDetails profileDetails;
 
     public void attachProfileDetails(UserProfileDetails details) {
@@ -86,11 +84,11 @@ public class User {
         this.unlockedCapabilities = unlockedCapabilities == null ? new ArrayList<>() : unlockedCapabilities;
     }
 
-    public List<Long> getFavoriteLocationTypeIds() {
+    public List<String> getFavoriteLocationTypeIds() {
         return favoriteLocationTypeIds;
     }
 
-    public void setFavoriteLocationTypeIds(List<Long> favoriteLocationTypeIds) {
+    public void setFavoriteLocationTypeIds(List<String> favoriteLocationTypeIds) {
         this.favoriteLocationTypeIds = favoriteLocationTypeIds == null ? new ArrayList<>() : favoriteLocationTypeIds;
     }
 }

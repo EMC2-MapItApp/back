@@ -1,29 +1,25 @@
 package emc.mapIt.entity;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
-@Entity
-@Table(name = "milestone_definitions")
+@Document(collection = "milestone_definitions")
 public class MilestoneDefinition {
-    
+
     @Id
     private String id;
-    
+
     @NotBlank
-    @Column(nullable = false, columnDefinition = "text")
     private String description;
-    
+
     @NotNull
-    @Column(name = "xp_reward", nullable = false)
     private Integer xpReward;
-    
+
     @NotBlank
-    @Column(name = "condition_type", nullable = false)
     private String conditionType;
-    
-    @Column(name = "condition_value")
+
     private Integer conditionValue;
     
     // Constructores

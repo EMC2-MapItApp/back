@@ -1,66 +1,42 @@
 package emc.mapIt.entity;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZonedDateTime;
-import java.util.UUID;
 
-@Entity
-@Table(name = "user_milestones")
-@IdClass(UserMilestoneId.class)
+@Document(collection = "user_milestones")
+@CompoundIndex(name = "uk_user_milestone", def = "{'userId': 1, 'milestoneId': 1}", unique = true)
 public class UserMilestone {
-    
+
     @Id
-    @Column(name = "user_id")
-    private UUID userId;
-    
-    @Id
-    @Column(name = "milestone_id")
+    private String id;
+
+    private String userId;
+
     private String milestoneId;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
-    private User user;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "milestone_id", insertable = false, updatable = false)
-    private MilestoneDefinition milestoneDefinition;
-    
-    @CreationTimestamp
-    @Column(name = "completed_at", nullable = false)
+
     private ZonedDateTime completedAt;
-    
+
     // Constructores
     public UserMilestone() {}
-    
-    public UserMilestone(UUID userId, String milestoneId) {
+
+    public UserMilestone(String userId, String milestoneId) {
         this.userId = userId;
         this.milestoneId = milestoneId;
     }
-    
-    public UserMilestone(User user, MilestoneDefinition milestoneDefinition) {
-        this.userId = user.getId();
-        this.milestoneId = milestoneDefinition.getId();
-        this.user = user;
-        this.milestoneDefinition = milestoneDefinition;
-    }
-    
+
     // Getters y Setters
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
-    
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
     public String getMilestoneId() { return milestoneId; }
     public void setMilestoneId(String milestoneId) { this.milestoneId = milestoneId; }
-    
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
-    
-    public MilestoneDefinition getMilestoneDefinition() { return milestoneDefinition; }
-    public void setMilestoneDefinition(MilestoneDefinition milestoneDefinition) { 
-        this.milestoneDefinition = milestoneDefinition; 
-    }
-    
+
     public ZonedDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(ZonedDateTime completedAt) { this.completedAt = completedAt; }
 }

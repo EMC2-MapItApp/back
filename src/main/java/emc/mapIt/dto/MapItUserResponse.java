@@ -5,7 +5,6 @@ import emc.mapIt.entity.UserType;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Vista serializable del usuario para respuestas API.
@@ -30,7 +29,7 @@ import java.util.UUID;
 public record MapItUserResponse(
 
                 /** Identificador único del usuario. */
-                UUID id,
+                String id,
 
                 /** Nombre visible del usuario. */
                 String name,
@@ -55,7 +54,7 @@ public record MapItUserResponse(
                 List<String> unlockedCapabilities,
 
                 /** Lista de ids de tipos de ubicación favoritos (solo INDIVIDUAL). */
-                List<Long> favoriteLocationTypeIds,
+                List<String> favoriteLocationTypeIds,
 
                 // --- Perfil personal ---
 

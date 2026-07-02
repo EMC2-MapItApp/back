@@ -1,21 +1,20 @@
 package emc.mapIt.repository;
 
 import emc.mapIt.entity.PublicationEnrollment;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface PublicationEnrollmentRepository extends JpaRepository<PublicationEnrollment, Long> {
+public interface PublicationEnrollmentRepository extends MongoRepository<PublicationEnrollment, String> {
 
-    long countByPublicationId(Long publicationId);
+    long countByPublicationId(String publicationId);
 
-    boolean existsByPublicationIdAndUserId(Long publicationId, UUID userId);
+    boolean existsByPublicationIdAndUserId(String publicationId, String userId);
 
-    List<PublicationEnrollment> findByPublicationId(Long publicationId);
+    List<PublicationEnrollment> findByPublicationId(String publicationId);
 
-    Optional<PublicationEnrollment> findByPublicationIdAndUserId(Long publicationId, UUID userId);
+    Optional<PublicationEnrollment> findByPublicationIdAndUserId(String publicationId, String userId);
 }

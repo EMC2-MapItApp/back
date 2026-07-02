@@ -12,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
 import emc.mapIt.mapper.AuthRegisterToUserMapper;
 import emc.mapIt.mapper.UserWithProfileToMapItUserMapper;
 
@@ -90,7 +89,7 @@ public class AuthService {
         return new AuthResponse(token, userService.toResponse(user));
     }
 
-    public UUID requireUserId(String authHeader) {
+    public String requireUserId(String authHeader) {
         return jwtService.extractUserId(authHeader);
     }
 

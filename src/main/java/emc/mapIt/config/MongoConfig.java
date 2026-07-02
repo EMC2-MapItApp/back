@@ -1,31 +1,41 @@
 package emc.mapIt.config;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.data.convert.ReadingConverter;
+import org.springframework.data.convert.WritingConverter;
+import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
+
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.Date;
 
 @Configuration
 public class MongoConfig {
 
-    @Value("${spring.data.mongodb.uri:}")
-    private String mongoUri;
-
-    @Value("${spring.data.mongodb.database:mapit_db}")
-    private String mongoDatabase;
-
     @Bean
-    public MongoClient mongoClient() {
-        if (mongoUri == null || mongoUri.isBlank()) {
-            return MongoClients.create();
-        }
-        return MongoClients.create(mongoUri);
+    public MongoCustomConversions mongoCustomConversions() {
+        return new MongoCustomConversions(Arrays.asList(
+                new ZonedDateTimeWriteConverter(),
+                new ZonedDateTimeReadConverter()
+        ));
     }
 
-    @Bean
-    public MongoTemplate mongoTemplate(MongoClient mongoClient) {
-        return new MongoTemplate(mongoClient, mongoDatabase);
+    @WritingConverter
+    static class ZonedDateTimeWriteConverter implements Converter<ZonedDateTime, Date> {
+        @Override
+        public Date convert(ZonedDateTime source) {
+            return Date.from(source.toInstant());
+        }
+    }
+
+    @ReadingConverter
+    static class ZonedDateTimeReadConverter implements Converter<Date, ZonedDateTime> {
+        @Override
+        public ZonedDateTime convert(Date source) {
+            return source.toInstant().atZone(ZoneOffset.UTC);
+        }
     }
 }
