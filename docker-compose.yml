@@ -1,0 +1,54 @@
+
+services:
+
+  # ── Base de datos ──────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: mapit-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE}
+    volumes:
+      - mongodb_data:/data/db      # persistencia de datos
+    networks:
+      - mapit-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Aplicación Spring Boot ─────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime                # apunta al stage final del multi-stage
+    container_name: mapit-backend
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      # La app se conecta al servicio 'mongodb' por nombre de red interna
+      MONGODB_URI: "mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGODB_DATABASE}?authSource=admin"
+      MONGODB_DATABASE: ${MONGODB_DATABASE}
+      MAPIT_JWT_SECRET: ${JWT_SECRET}
+      MAPIT_JWT_EXPIRATION: ${JWT_EXPIRATION:-86400}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+    depends_on:
+      mongodb:
+        condition: service_healthy   # espera a que Mongo esté listo
+    networks:
+      - mapit-net
+
+# ── Volúmenes y redes ──────────────────────────────────────────────────────────
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  mapit-net:
+    driver: bridge

@@ -20,8 +20,8 @@ spring:
 
 mapit:
   jwt:
-    secret: mapit-dev-secret-change-me
-    expiration-seconds: 86400
+    secret: ${MAPIT_JWT_SECRET:mapit-dev-secret-change-me}
+    expiration-seconds: ${MAPIT_JWT_EXPIRATION:86400}
   geo:
     provider-url: "http://ip-api.com/json"
     timeout-ms: 3000
