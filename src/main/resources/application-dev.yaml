@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────
+# Perfil: DEV
+# Puerto 8080 → estándar de Tomcat externo.
+# Nota: en WAR desplegado en Tomcat externo este puerto
+# es ignorado; lo controla server.xml de Tomcat.
+# Solo aplica si se arranca con: mvn spring-boot:run -P dev
+# ─────────────────────────────────────────────────────────────
+server:
+  port: 8081
+
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/mapit_db}
+      database: ${MONGODB_DATABASE:mapit_db}
+
+mapit:
+  jwt:
+    secret: ${MAPIT_JWT_SECRET:mapit-dev-secret-ONLY-FOR-LOCAL}
+    expiration-seconds: ${MAPIT_JWT_EXPIRATION:86400}
+  geo:
+    # Permite simular ubicación vía cabecera X-Forwarded-For en pruebas
+    allow-sim-ip: true
+
+logging:
+  level:
+    emc.mapIt.repository: DEBUG
+    emc.mapIt.service: DEBUG
+    emc.mapIt.controller: DEBUG

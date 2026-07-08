@@ -1,36 +1,20 @@
-
-server:
-  port: 8090
-
+# ─────────────────────────────────────────────────────────────
+# Configuración BASE — común a todos los entornos.
+# Aquí NO van: puertos, credenciales, ni URLs de base de datos.
+# Esos valores se sobreescriben en application-{perfil}.yaml
+# ─────────────────────────────────────────────────────────────
 spring:
   application:
     name: mapIt
-
-  data:
-    mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/mapit_db}
-      database: ${MONGODB_DATABASE:mapit_db}
-
-  # Para manejar las zonas horarias correctamente
   jackson:
     serialization:
       write-dates-as-timestamps: false
     time-zone: Europe/Madrid
 
-
 mapit:
-  jwt:
-    secret: ${MAPIT_JWT_SECRET:mapit-dev-secret-change-me}
-    expiration-seconds: ${MAPIT_JWT_EXPIRATION:86400}
   geo:
     provider-url: "http://ip-api.com/json"
     timeout-ms: 3000
-    allow-sim-ip: false #permite la simulación de IP para pruebas
     fallback-lat: 40.4168
     fallback-lng: -3.7038
 
-logging:
-  level:
-    emc.mapIt.repository: DEBUG
-    emc.mapIt.service: DEBUG
-    emc.mapIt.controller: DEBUG

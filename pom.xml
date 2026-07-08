@@ -12,7 +12,7 @@
 	<groupId>emc.mapIt</groupId>
 	<artifactId>mapIt</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<packaging>war</packaging>
 	<name />
 	<description />
 	<url />
@@ -31,6 +31,51 @@
 	<properties>
 		<java.version>21</java.version>
 	</properties>
+
+	<profiles>
+
+		<!-- ══════════════════════════════════════════════════
+         PERFIL: dev
+         Uso: mvn package -P dev
+         → Empaqueta como WAR para desplegar en Tomcat externo.
+         → Tomcat se marca como "provided" porque el contenedor
+           lo proporciona (no se embebe en el artefacto).
+         ══════════════════════════════════════════════════ -->
+		<profile>
+			<id>dev</id>
+			<activation>
+				<!-- Activo por defecto si no se especifica perfil -->
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<!-- Spring activará application-dev.yaml en runtime -->
+				<spring.profiles.active>dev</spring.profiles.active>
+			</properties>
+			<dependencies>
+				<dependency>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-tomcat</artifactId>
+					<scope>provided</scope>
+				</dependency>
+			</dependencies>
+		</profile>
+
+		<!-- ══════════════════════════════════════════════════
+         PERFIL: preprod
+         Uso: mvn package -P preprod  (o por defecto en CI)
+         → Empaqueta como JAR self-contained para Docker.
+         → Tomcat embedded activo (viene de spring-boot-starter-web).
+         → No modifica dependencias: hereda el pom base.
+         ══════════════════════════════════════════════════ -->
+		<profile>
+			<id>preprod</id>
+			<properties>
+				<spring.profiles.active>preprod</spring.profiles.active>
+			</properties>
+		</profile>
+
+	</profiles>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -51,12 +96,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
-	<!-- Descomentar para desarrollo -->
-		<!-- <dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-tomcat</artifactId>
-			<scope>provided</scope>
-		</dependency> -->
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

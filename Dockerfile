@@ -15,7 +15,7 @@ RUN ./mvnw dependency:go-offline -B
 # 2. Copiar el código fuente y compilar
 COPY src ./src
 
-RUN ./mvnw clean package -DskipTests -B
+RUN ./mvnw clean package -P preprod -DskipTests -B
 
 # ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine AS runtime
@@ -26,10 +26,10 @@ RUN addgroup -S mapit && adduser -S mapit -G mapit
 WORKDIR /app
 
 # Copiar solo el JAR final desde el stage builder
-COPY --from=builder /build/target/mapIt-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=builder /build/target/mapIt-0.0.1-SNAPSHOT.war app.war
 
 # Cambiar propietario del JAR al usuario no-root
-RUN chown mapit:mapit app.jar
+RUN chown mapit:mapit app.war
 
 USER mapit
 
@@ -38,7 +38,4 @@ EXPOSE 8090
 # Configuración JVM optimizada para contenedores:
 #   -XX:+UseContainerSupport      → respeta los límites de memoria del contenedor
 #   -XX:MaxRAMPercentage=75.0     → usa máximo el 75% de la RAM asignada
-ENTRYPOINT ["java", \
-  "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75.0", \
-  "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "app.war"]

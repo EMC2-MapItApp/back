@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────
+# Perfil: PREPROD
+# Puerto 8090 → expuesto en Docker (ver docker-compose.yml).
+# Las variables sin valor por defecto son OBLIGATORIAS:
+# la app falla al arrancar si no están definidas.
+# Esto es intencional (Fail Fast) para evitar despliegues
+# con configuración incompleta.
+# ─────────────────────────────────────────────────────────────
+server:
+  port: 8090
+
+spring:
+  data:
+    mongodb:
+      # Atlas URI: mongodb+srv://user:pass@cluster.mongodb.net/db
+      uri: ${MONGODB_URI}          # obligatorio — sin fallback
+      database: ${MONGODB_DATABASE:mapit_db}
+
+mapit:
+  jwt:
+    secret: ${MAPIT_JWT_SECRET}    # obligatorio — sin fallback
+    expiration-seconds: ${MAPIT_JWT_EXPIRATION:86400}
+  geo:
+    allow-sim-ip: false            # siempre false fuera de dev
+
+logging:
+  level:
+    root: WARN
+    emc.mapIt: INFO
