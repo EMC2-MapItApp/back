@@ -27,3 +27,4 @@ logging:
   level:
     root: WARN
     emc.mapIt: INFO
+    org.mongodb.driver: WARN

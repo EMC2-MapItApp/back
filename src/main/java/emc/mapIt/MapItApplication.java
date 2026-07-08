@@ -5,7 +5,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+    // La app usa JWT propio — no necesita el UserDetailsService
+    // auto-configurado de Spring Security (que genera password aleatoria en logs)
+    org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class
+})
 public class MapItApplication extends SpringBootServletInitializer {
 
     /**

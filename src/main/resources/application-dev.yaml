@@ -24,6 +24,11 @@ mapit:
 
 logging:
   level:
-    emc.mapIt.repository: DEBUG
-    emc.mapIt.service: DEBUG
-    emc.mapIt.controller: DEBUG
+    # Aplicación propia: DEBUG completo en dev
+    emc.mapIt: DEBUG
+    # Suprimir el dump JSON de configuración de MongoClient
+    org.mongodb.driver.client: WARN
+    # Mantener solo el mensaje de conexión exitosa del cluster
+    org.mongodb.driver.cluster: INFO
+    # Silenciar el scanner de repositorios (verbose pero no útil en dev)
+    org.springframework.data.repository.config: WARN

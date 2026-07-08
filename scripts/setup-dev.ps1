@@ -40,7 +40,7 @@ function Start-MongoLocal {
 
 function Invoke-SpringBootRun {
     Write-Host "[dev] Arrancando aplicación con Spring Boot (perfil dev)..." -ForegroundColor Cyan
-    Write-Host "[dev] Puerto: 8080 — http://localhost:8080" -ForegroundColor Cyan
+    Write-Host "[dev] Puerto: 8081 — http://localhost:8081" -ForegroundColor Cyan
     # spring-boot:run incluye dependencias 'provided' en classpath,
     # por lo que Tomcat embebido está disponible aunque el perfil
     # lo marque como provided (necesario para empaquetar WAR externo)
