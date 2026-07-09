@@ -46,6 +46,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'maven'
 
       # Compila el proyecto con el perfil prod y ejecuta todos los tests
       # Si algun test falla, el pipeline se detiene aqui y no se despliega nada

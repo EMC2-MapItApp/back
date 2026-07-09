@@ -7,6 +7,7 @@ import emc.mapIt.dto.AuthResponse;
 import emc.mapIt.dto.MapItUserResponse;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.service.AuthService;
+import emc.mapIt.service.JwtService;
 import emc.mapIt.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,7 @@ class AuthControllerTest {
 
     @MockBean AuthService authService;
     @MockBean UserService userService;
+    @MockBean JwtService jwtService;
 
     private static final MapItUserResponse USER_RESPONSE = new MapItUserResponse(
             "id-1", "Ana", "ana@test.com", UserType.PARTICULAR,
