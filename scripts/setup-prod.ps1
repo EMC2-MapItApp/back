@@ -6,15 +6,22 @@
 #   - gcloud CLI autenticado: gcloud auth login
 #
 # Uso:
-#   .\scripts\setup-prod.ps1            -> build completo + push
-#   .\scripts\setup-prod.ps1 -SkipPush  -> solo construye la imagen (sin subir)
+#   .\scripts\setup-prod.ps1                        -> build + push + deploy
+#   .\scripts\setup-prod.ps1 -SkipPush              -> solo construye la imagen (sin subir)
+#   .\scripts\setup-prod.ps1 -SkipDeploy            -> build + push (sin redesplegar Cloud Run)
 #
 # Nota: el Dockerfile incluye el build Maven internamente (multi-stage).
 # Las variables de aplicacion (MongoDB, JWT) se inyectan en Google Cloud Run.
 # ═══════════════════════════════════════════════════════════════
 param(
-    [switch]$SkipPush    # Construye la imagen pero no la sube a GCR
+       [switch]$SkipPush,    # Construye la imagen pero no la sube a GCR
+    [switch]$SkipDeploy   # Sube la imagen pero no despliega en Cloud Run
 )
+
+#COnstantes de configuracion
+$SERVICE = "backend"
+$REGION  = "europe-southwest1"
+$PROJECT = "mapitback"
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -79,6 +86,26 @@ function Push-DockerImage {
     Write-Host "[prod] Imagen publicada: $ImageTag" -ForegroundColor Green
 }
 
+function Deploy-CloudRun {
+    param(
+        [string]$ServiceName,
+        [string]$ImageTag,
+        [string]$Region,
+        [string]$Project
+    )
+    Write-Host "[prod] Desplegando nueva revision en Cloud Run: $ServiceName" -ForegroundColor Cyan
+    gcloud run deploy $ServiceName `
+        --image $ImageTag `
+        --region $Region `
+        --project $Project `
+        --quiet
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Cloud Run deploy fallo. Revisa los errores anteriores."
+        exit 1
+    }
+    Write-Host "[prod] Servicio Cloud Run actualizado y reiniciado: $ServiceName" -ForegroundColor Green
+}
+
 # ── Ejecucion ───────────────────────────────────────────────────
 
 $envFile = Join-Path (Split-Path $PSScriptRoot -Parent) ".env.prod"
@@ -86,4 +113,11 @@ Load-EnvFile -Path $envFile
 
 Assert-Prerequisites
 Build-DockerImage -ImageTag $IMAGE
-if (-not $SkipPush) { Push-DockerImage -ImageTag $IMAGE }
+if (-not $SkipPush) {
+    Push-DockerImage -ImageTag $IMAGE
+    if (-not $SkipDeploy) {
+        Deploy-CloudRun -ServiceName $SERVICE -ImageTag $IMAGE -Region $REGION -Project $PROJECT
+    }
+}
+
+

@@ -1,0 +1,92 @@
+# ═══════════════════════════════════════════════════════════════
+# deploy.yml - Pipeline CI/CD del backend MapIt
+#
+# Flujo completo en cada push a main:
+#   1. Compila el proyecto y ejecuta los tests (CI)
+#   2. Construye la imagen Docker y la sube a Artifact Registry (CD)
+#   3. Despliega la nueva revision en Google Cloud Run (CD)
+#
+# Secretos necesarios en GitHub (Settings → Secrets → Actions):
+#   GCP_SA_KEY → JSON de Service Account con roles:
+#                - Artifact Registry Writer
+#                - Cloud Run Developer
+# ═══════════════════════════════════════════════════════════════
+
+name: CI/CD Backend
+
+# ── Disparador ──────────────────────────────────────────────────
+# Solo se activa con push a la rama main.
+# Las ramas de desarrollo (feature/*, fix/*) no despliegan a produccion.
+on:
+  push:
+    branches: [main_back]
+
+jobs:
+  build-test-deploy:
+    # Runner de GitHub: Ubuntu gratuito con Docker preinstalado
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ── FASE 1: CI - Integracion Continua ─────────────────────
+
+      # Descarga el codigo del commit que disparo el push
+      - name: Checkout del codigo fuente
+        uses: actions/checkout@v4
+
+      # Instala el JDK 21 (misma version que el pom.xml del proyecto)
+      # Temurin es la distribucion open-source de Eclipse Foundation (antes AdoptOpenJDK)
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Compila el proyecto con el perfil prod y ejecuta todos los tests
+      # Si algun test falla, el pipeline se detiene aqui y no se despliega nada
+      # clean verify = limpia artefactos previos + compila + test + empaqueta
+      - name: Build y tests
+        run: ./mvnw clean verify -P prod
+
+      # ── FASE 2: CD - Construccion y publicacion de imagen ──────
+
+      # Autentica el runner de GitHub con Google Cloud usando la Service Account
+      # El JSON del secreto GCP_SA_KEY se configura en:
+      # GitHub repo → Settings → Secrets and variables → Actions
+      - name: Autenticar en Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Instala y configura el CLI de gcloud en el runner
+      # Necesario para los comandos docker y gcloud run de los pasos siguientes
+      - name: Instalar gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Configura las credenciales de Docker para que pueda hacer push
+      # a Google Artifact Registry sin autenticacion adicional
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker europe-southwest1-docker.pkg.dev --quiet
+
+      # Construye la imagen usando el Dockerfile multi-stage del proyecto:
+      #   Stage 1: Maven compila el WAR dentro del contenedor
+      #   Stage 2: Tomcat sirve el WAR resultante
+      # Sube la imagen con el tag :latest al repositorio en Artifact Registry
+      - name: Docker build y push
+        run: |
+          docker build -t europe-southwest1-docker.pkg.dev/mapitback/mapit-repo/backend:latest .
+          docker push europe-southwest1-docker.pkg.dev/mapitback/mapit-repo/backend:latest
+
+      # ── FASE 3: CD - Redespliegue en Cloud Run ─────────────────
+
+      # Notifica a Cloud Run que hay una nueva imagen disponible.
+      # Cloud Run crea una nueva revision, enruta el trafico hacia ella
+      # y termina las instancias de la revision anterior (zero-downtime).
+      # --quiet suprime confirmaciones interactivas (requerido en CI)
+      - name: Deploy en Cloud Run
+        run: |
+          gcloud run deploy backend \
+            --image europe-southwest1-docker.pkg.dev/mapitback/mapit-repo/backend:latest \
+            --region europe-southwest1 \
+            --project mapitback \
+            --quiet
