@@ -46,7 +46,9 @@ jobs:
       # Si algun test falla, el pipeline se detiene aqui y no se despliega nada
       # clean verify = limpia artefactos previos + compila + test + empaqueta
       - name: Build y tests
-        run: ./mvnw clean verify -P prod
+        run: |
+          chmod +x ./mvnw
+          ./mvnw clean verify -P prod
 
       # ── FASE 2: CD - Construccion y publicacion de imagen ──────
 
