@@ -1,0 +1,32 @@
+
+# ─────────────────────────────────────────────────────────────
+# docker-compose.dev.yml - MongoDB local para desarrollo
+#
+# Levanta SOLO la base de datos. La aplicacion corre fuera
+# de Docker (via setup-dev.ps1 o desde el IDE).
+#
+# Uso:
+#   docker-compose -f docker-compose.dev.yml up -d     # arrancar
+#   docker-compose -f docker-compose.dev.yml down      # parar
+#   docker-compose -f docker-compose.dev.yml down -v   # parar + borrar datos
+# ─────────────────────────────────────────────────────────────
+services:
+
+  mongodb:
+    image: mongo:7.0
+    container_name: mapit-mongodb-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"     # expuesto al host para que la app local se conecte
+    volumes:
+      - mongodb_dev_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  mongodb_dev_data:
+    driver: local

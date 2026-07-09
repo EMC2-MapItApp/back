@@ -61,16 +61,17 @@
 		</profile>
 
 		<!-- ══════════════════════════════════════════════════
-         PERFIL: preprod
-         Uso: mvn package -P preprod  (o por defecto en CI)
+         PERFIL: prod
+         Uso: mvn package -P prod  (o por defecto en CI)
          → Empaqueta como JAR self-contained para Docker.
          → Tomcat embedded activo (viene de spring-boot-starter-web).
          → No modifica dependencias: hereda el pom base.
          ══════════════════════════════════════════════════ -->
 		<profile>
-			<id>preprod</id>
+			<id>prod</id>
 			<properties>
-				<spring.profiles.active>preprod</spring.profiles.active>
+				<!-- Activa application-prod.yaml en runtime (nombre usado en Cloud Run) -->
+				<spring.profiles.active>prod</spring.profiles.active>
 			</properties>
 		</profile>
 

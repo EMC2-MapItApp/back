@@ -1,0 +1,25 @@
+# ─────────────────────────────────────────────────────────────
+# Perfil: PROD (Google Cloud Run)
+#
+# Variables inyectadas por Cloud Run:
+#   SPRING_DATA_MONGODB_URI  -> Secret Manager (nativo Spring, no necesita YAML)
+#   MAPIT_JWT_SECRET         -> Secret Manager (relaxed binding: mapit.jwt.secret)
+#   MAPIT_JWT_EXPIRATION     -> variable de entorno (puente necesario: ver abajo)
+# ─────────────────────────────────────────────────────────────
+server:
+  port: 8090
+
+mapit:
+  jwt:
+    # MAPIT_JWT_EXPIRATION no mapea automaticamente a expiration-seconds
+    # (el relaxed binding solo mapea MAPIT_JWT_EXPIRATION_SECONDS).
+    # Este puente es necesario mientras Cloud Run use MAPIT_JWT_EXPIRATION.
+    expiration-seconds: ${MAPIT_JWT_EXPIRATION:86400}
+  geo:
+    allow-sim-ip: false
+
+logging:
+  level:
+    root: WARN
+    emc.mapIt: INFO
+    org.mongodb.driver: WARN

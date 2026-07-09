@@ -15,7 +15,7 @@ RUN ./mvnw dependency:go-offline -B
 # 2. Copiar el código fuente y compilar
 COPY src ./src
 
-RUN ./mvnw clean package -P preprod -DskipTests -B
+RUN ./mvnw clean package -P prod -DskipTests -B
 
 # ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine AS runtime

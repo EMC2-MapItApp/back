@@ -35,5 +35,5 @@ build/
 ### Environment ###
 .env
 .env.dev
-.env.preprod
+.env.prod
 
