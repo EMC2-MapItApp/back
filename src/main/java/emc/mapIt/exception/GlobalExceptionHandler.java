@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -43,6 +44,16 @@ public class GlobalExceptionHandler {
         log.warn("Validation error fields={}", details);
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(new ErrorResponse.ErrorBody("BAD_REQUEST", message, HttpStatus.BAD_REQUEST.value())));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    /**
+     * Maneja body ausente o JSON malformado en la peticion.
+     */
+    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("Request body no legible: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse(new ErrorResponse.ErrorBody("BAD_REQUEST", "Request body ausente o malformado", HttpStatus.BAD_REQUEST.value())));
     }
 
     @ExceptionHandler(Exception.class)
