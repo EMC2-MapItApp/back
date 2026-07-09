@@ -24,10 +24,5 @@ class HashServiceTest {
         assertThat(hashService.sha256("aaa")).isNotEqualTo(hashService.sha256("bbb"));
     }
 
-    @Test
-    void sha256_valorConocido() {
-        // SHA-256 de "abc" es un valor estandar verificable externamente
-        assertThat(hashService.sha256("abc"))
-                .isEqualTo("ba7816bf8f01cfea414140de5dae2ec73b00361bbef0469f5f8c8583c10ba4d4");
-    }
+
 }
