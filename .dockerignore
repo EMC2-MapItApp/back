@@ -1,4 +1,5 @@
-target/
+target/*
+!target/*.war
 .git/
 .github/
 .mvn/wrapper/maven-wrapper.jar
