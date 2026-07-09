@@ -37,3 +37,7 @@ build/
 .env.dev
 .env.prod
 
+### github ###
+.github/
+
+

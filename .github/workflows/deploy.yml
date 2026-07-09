@@ -76,13 +76,17 @@ jobs:
       - name: Configurar Docker para Artifact Registry
         run: gcloud auth configure-docker europe-southwest1-docker.pkg.dev --quiet
 
-      # Construye la imagen usando el Dockerfile multi-stage del proyecto:
-      #   Stage 1: Maven compila el WAR dentro del contenedor
-      #   Stage 2: Tomcat sirve el WAR resultante
-      # Sube la imagen con el tag :latest al repositorio en Artifact Registry
+      # Construye la imagen usando el WAR ya compilado por el paso anterior (Build y tests).
+      # No recompila con Maven dentro de Docker → ahorra ~1-2 min por ejecucion.
+      # --cache-from reutiliza las capas de la imagen anterior de Artifact Registry:
+      #   si solo cambia el WAR, reconstruye solo la capa COPY, no la imagen base.
       - name: Docker build y push
         run: |
-          docker build -t europe-southwest1-docker.pkg.dev/mapitback/mapit-repo/backend:latest .
+          docker build \
+            --cache-from europe-southwest1-docker.pkg.dev/mapitback/mapit-repo/backend:latest \
+            -t europe-southwest1-docker.pkg.dev/mapitback/mapit-repo/backend:latest \
+            --build-arg WAR_FILE=target/mapIt-0.0.1-SNAPSHOT.war \
+            .
           docker push europe-southwest1-docker.pkg.dev/mapitback/mapit-repo/backend:latest
 
       # ── FASE 3: CD - Redespliegue en Cloud Run ─────────────────
