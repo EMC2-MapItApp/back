@@ -7,3 +7,9 @@ mapit:
   jwt:
     secret: clave-secreta-para-tests-unitarios-1234567890
     expiration-seconds: 3600
+  geo:
+    provider-url: "http://ip-api.com/json"
+    timeout-ms: 3000
+    allow-sim-ip: false
+    fallback-lat: 40.4168
+    fallback-lng: -3.7038
