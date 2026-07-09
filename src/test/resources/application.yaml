@@ -1,0 +1,9 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/mapit-test
+
+mapit:
+  jwt:
+    secret: clave-secreta-para-tests-unitarios-1234567890
+    expiration-seconds: 3600
