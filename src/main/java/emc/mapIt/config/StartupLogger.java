@@ -20,10 +20,10 @@ public class StartupLogger implements ApplicationRunner {
 
     private final Environment environment;
 
-    @Value("${server.port}")
+    @Value("${server.port:8080}")
     private int port;
 
-    @Value("${spring.data.mongodb.uri}")
+    @Value("${spring.data.mongodb.uri:not-configured}")
     private String mongoUri;
 
     public StartupLogger(Environment environment) {
