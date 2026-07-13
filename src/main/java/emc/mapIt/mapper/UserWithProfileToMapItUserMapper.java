@@ -39,6 +39,8 @@ public class UserWithProfileToMapItUserMapper {
                 user.getUserType()
         );
 
+        mapItUser.setEmailVerified(user.isEmailVerified());
+
         if (profileDetails != null) {
             mapItUser.setLevel(profileDetails.getLevel());
             mapItUser.setXp(profileDetails.getXp());

@@ -10,9 +10,11 @@ Tecnologías utilizadas: **JUnit 5**, **Mockito**, **AssertJ**, **MockMvc**.
 ```
 src/test/java/emc/mapIt/
 ├── service/
-│   ├── HashServiceTest.java        ← unitario puro
-│   ├── JwtServiceTest.java         ← unitario puro
-│   └── AuthServiceTest.java        ← unitario con Mockito
+│   ├── HashServiceTest.java               ← unitario puro
+│   ├── JwtServiceTest.java                ← unitario puro
+│   ├── AuthServiceTest.java               ← unitario con Mockito
+│   ├── PasswordPolicyServiceTest.java     ← unitario puro (Fase 1 auth)
+│   └── EmailVerificationServiceTest.java  ← unitario con Mockito (Fase 1 auth)
 └── controller/
     └── AuthControllerTest.java     ← capa web con MockMvc
 ```
@@ -80,10 +82,49 @@ Dependencias mockeadas:
 
 | Método de test | Descripción |
 |---|---|
-| `login_conCredencialesCorrectas_devuelveAuthResponse` | Happy path: credenciales correctas devuelven `AuthResponse` con token |
+| `login_conUsuarioVerificado_devuelveAuthResponse` | Happy path: credenciales correctas + email verificado devuelven `AuthResponse` con token |
+| `login_conUsuarioNoVerificado_lanzaApiExceptionForbidden` | Email sin verificar lanza `ApiException` (`EMAIL_NOT_VERIFIED`, 403), tras validar la password |
 | `login_conPasswordIncorrecta_lanzaApiException` | Password incorrecta lanza `ApiException` con mensaje `"invalidas"` |
 | `login_conRequestNull_lanzaApiException` | Request `null` lanza `ApiException` |
 | `login_conEmailBlanco_lanzaApiException` | Email vacío lanza `ApiException` |
+
+---
+
+## PasswordPolicyServiceTest (Fase 1 auth)
+
+**Tipo:** Unitario puro — sin Spring, sin mocks.
+**Clase bajo test:** `emc.mapIt.service.PasswordPolicyService`
+
+Verifica el rechazo de contraseñas débiles según puntuación zxcvbn (`com.nulabinc.zxcvbn`) y el límite efectivo de 72 bytes de BCrypt.
+
+| Método de test | Descripción |
+|---|---|
+| `validate_conPasswordFuerte_noLanzaExcepcion` | Password con score alto no lanza excepción |
+| `validate_conPasswordDebil_lanzaApiException` | Password de diccionario (`"12345678"`) lanza `ApiException` (`WEAK_PASSWORD`) |
+| `validate_conPasswordQueContieneNombreDelUsuario_lanzaApiException` | zxcvbn penaliza passwords derivadas del nombre/email del propio usuario |
+| `validate_conPasswordSuperando72Bytes_lanzaApiException` | Password >72 bytes lanza `ApiException` (`PASSWORD_TOO_LONG`) en vez de dejar que BCrypt trunque en silencio |
+
+---
+
+## EmailVerificationServiceTest (Fase 1 auth)
+
+**Tipo:** Unitario con Mockito.
+**Clase bajo test:** `emc.mapIt.service.EmailVerificationService`
+
+Dependencias mockeadas: `EmailVerificationTokenRepository`, `UserRepository`, `HashService`, `MailService`.
+
+| Método de test | Descripción |
+|---|---|
+| `issueAndSend_creaTokenYEnviaCorreo` | Genera token, lo guarda hasheado y llama a `MailService` |
+| `issueAndSend_invalidaTokenAnteriorAntesDeCrearUnoNuevo` | Borra cualquier token no consumido previo del usuario |
+| `verify_conTokenValido_marcaUsuarioVerificado` | Token válido marca `emailVerified=true` y consume el token |
+| `verify_conTokenExpirado_lanzaApiException` | Token expirado lanza `ApiException` (`INVALID_TOKEN`) |
+| `verify_conTokenYaConsumido_lanzaApiException` | Token ya consumido lanza `ApiException` |
+| `verify_conTokenInexistente_lanzaApiException` | Token desconocido lanza `ApiException` |
+| `resend_conEmailNoRegistrado_noLanzaYNoEnviaCorreo` | Email no registrado no lanza ni envía correo (anti-enumeración) |
+| `resend_conEmailYaVerificado_noEnviaCorreo` | Usuario ya verificado no recibe reenvío |
+| `resend_dentroDeCooldown_noReenviaCorreo` | Reenvío reciente (dentro del cooldown server-side) no reenvía |
+| `resend_fueraDeCooldown_reenviaCorreo` | Fuera del cooldown, reemite y envía |
 
 ---
 
@@ -101,11 +142,15 @@ Dependencias mockeadas con `@MockBean`:
 
 ### Grupo: `POST /api/v1/auth/register`
 
+Desde Fase 1, el registro ya no autentica (no devuelve token; el usuario debe verificar su email).
+
 | Método de test | Descripción |
 |---|---|
-| `register_conBodyValido_devuelve201ConToken` | Body válido → HTTP 201, body JSON con `token` y `user.email` |
-| `register_conEmailInvalido_devuelve400` | Email con formato inválido → HTTP 400 (Bean Validation `@Email`) |
+| `register_conBodyValido_devuelve201SinToken` | Body válido → HTTP 201, body JSON con `email`, sin `token` |
+| `register_conEmailInvalido_devuelve400` | Email con formato inválido → HTTP 400 (Bean Validation `@Email` + `@Pattern`) |
 | `register_sinBody_devuelve400` | Sin body → HTTP 400 |
+| `register_conPasswordCortaMenosDe8_devuelve400` | Password <8 caracteres → HTTP 400 (Bean Validation `@Size`) |
+| `register_conPasswordDebil_devuelve400` | `AuthService` lanza `WEAK_PASSWORD` → HTTP 400 con `error.code` |
 
 ### Grupo: `POST /api/v1/auth/login`
 
@@ -113,6 +158,20 @@ Dependencias mockeadas con `@MockBean`:
 |---|---|
 | `login_conCredencialesValidas_devuelve200ConToken` | Credenciales válidas → HTTP 200, body JSON con `token` |
 | `login_conEmailInvalido_devuelve400` | Email con formato inválido → HTTP 400 (Bean Validation `@Email`) |
+| `login_conUsuarioNoVerificado_devuelve403` | `AuthService` lanza `EMAIL_NOT_VERIFIED` → HTTP 403 con `error.code` |
+
+### Grupo: `POST /api/v1/auth/verify-email` (Fase 1 auth)
+
+| Método de test | Descripción |
+|---|---|
+| `verifyEmail_conTokenValido_devuelve200` | Token válido → HTTP 200 |
+| `verifyEmail_conTokenInvalido_devuelve400` | Token inválido/expirado → HTTP 400 con `error.code=INVALID_TOKEN` |
+
+### Grupo: `POST /api/v1/auth/resend-verification` (Fase 1 auth)
+
+| Método de test | Descripción |
+|---|---|
+| `resendVerification_siempreDevuelve200ConMensajeGenerico` | Siempre HTTP 200 con mensaje genérico, exista o no el email (anti-enumeración) |
 
 ### Grupo: `POST /api/v1/auth/logout`
 
@@ -129,7 +188,7 @@ Dependencias mockeadas con `@MockBean`:
 ./mvnw test
 
 # Solo los tests de servicios
-./mvnw test -Dtest="HashServiceTest,JwtServiceTest,AuthServiceTest"
+./mvnw test -Dtest="HashServiceTest,JwtServiceTest,AuthServiceTest,PasswordPolicyServiceTest,EmailVerificationServiceTest"
 
 # Solo los tests de controladores
 ./mvnw test -Dtest="AuthControllerTest"

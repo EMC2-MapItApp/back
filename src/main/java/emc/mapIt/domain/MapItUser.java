@@ -35,6 +35,8 @@ public class MapItUser {
     private LocalDate birthDate;
     private Instant createdAt;
     private Instant updatedAt;
+    // Fase 1 auth: AuthService.login() bloquea el acceso mientras sea false
+    private boolean emailVerified;
 
     // Constructor principal
     public MapItUser(String id, String name, String email, String passwordHash, UserType userType) {

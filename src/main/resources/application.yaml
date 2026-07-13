@@ -17,4 +17,10 @@ mapit:
     timeout-ms: 3000
     fallback-lat: 40.4168
     fallback-lng: -3.7038
+  mail:
+    from: ${MAPIT_MAIL_FROM:no-reply@mapit.local}
+    # Cooldown server-side para /resend-verification (el debounce de 60s del cliente es
+    # solo UX, este es el que realmente evita abuso)
+    resend-cooldown-seconds: 60
+    verification-ttl-minutes: 20
 

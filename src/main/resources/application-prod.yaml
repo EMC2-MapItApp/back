@@ -9,6 +9,19 @@
 server:
   port: 8090
 
+spring:
+  mail:
+    host: ${MAPIT_SMTP_HOST}
+    port: ${MAPIT_SMTP_PORT}
+    username: ${MAPIT_SMTP_USERNAME}
+    password: ${MAPIT_SMTP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 mapit:
   jwt:
     # MAPIT_JWT_EXPIRATION no mapea automaticamente a expiration-seconds
@@ -17,6 +30,9 @@ mapit:
     expiration-seconds: ${MAPIT_JWT_EXPIRATION:86400}
   geo:
     allow-sim-ip: false
+  mail:
+    # Dominio real de Cloudflare donde se sirve el frontend en produccion
+    frontend-base-url: ${MAPIT_FRONTEND_URL}
 
 logging:
   level:

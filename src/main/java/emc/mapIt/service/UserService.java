@@ -320,6 +320,8 @@ public class UserService {
                 user.getPasswordHash(),
                 user.getUserType());
 
+        domain.setEmailVerified(user.isEmailVerified());
+
         UserProfileDetails profileDetails = user.getProfileDetails();
 
         if (profileDetails != null) {

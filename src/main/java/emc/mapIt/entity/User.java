@@ -2,6 +2,7 @@ package emc.mapIt.entity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +25,11 @@ public class User {
     private UserType userType;
 
     private UserProfileDetails profileDetails;
+
+    // Fase 1 auth: bloquea login hasta confirmar el email (ver EmailVerificationService)
+    private boolean emailVerified = false;
+
+    private Instant emailVerifiedAt;
 
     public void attachProfileDetails(UserProfileDetails details) {
         this.profileDetails = details;
@@ -90,5 +96,21 @@ public class User {
 
     public void setFavoriteLocationTypeIds(List<String> favoriteLocationTypeIds) {
         this.favoriteLocationTypeIds = favoriteLocationTypeIds == null ? new ArrayList<>() : favoriteLocationTypeIds;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    public Instant getEmailVerifiedAt() {
+        return emailVerifiedAt;
+    }
+
+    public void setEmailVerifiedAt(Instant emailVerifiedAt) {
+        this.emailVerifiedAt = emailVerifiedAt;
     }
 }

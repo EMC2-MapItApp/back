@@ -33,7 +33,10 @@ public class AdminUserSeeder implements CommandLineRunner {
             adminUser.setEmail(ADMIN_EMAIL);
             adminUser.setPasswordHash(passwordEncoder.encode(ADMIN_PASSWORD));
             adminUser.setUserType(UserType.ADMIN);
-            
+            // Cuenta semilla de desarrollo: se da por verificada de entrada para no
+            // depender del orden de arranque respecto a EmailVerificationBackfillSeeder.
+            adminUser.setEmailVerified(true);
+
             userRepository.save(adminUser);
             log.info("Admin user created successfully: {}", ADMIN_EMAIL);
         } else {

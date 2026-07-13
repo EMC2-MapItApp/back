@@ -13,6 +13,17 @@ spring:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/mapit_db}
       database: ${MONGODB_DATABASE:mapit_db}
+  mail:
+    host: ${MAPIT_SMTP_HOST:smtp.gmail.com}
+    port: ${MAPIT_SMTP_PORT:587}
+    username: ${MAPIT_SMTP_USERNAME:}
+    password: ${MAPIT_SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 mapit:
   jwt:
@@ -21,6 +32,9 @@ mapit:
   geo:
     # Permite simular ubicación vía cabecera X-Forwarded-For en pruebas
     allow-sim-ip: true
+  mail:
+    # URL publica del frontend usada para construir el enlace de verificacion
+    frontend-base-url: ${MAPIT_FRONTEND_URL:http://localhost:4200}
 
 logging:
   level:

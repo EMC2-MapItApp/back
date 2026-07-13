@@ -110,6 +110,19 @@
 			<artifactId>spring-boot-starter-data-mongodb</artifactId>
 		</dependency>
 
+		<!-- Envio de email (verificacion de cuenta, Fase 1 auth) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
+		<!-- Puerto Java del algoritmo zxcvbn (misma escala 0-4 que el zxcvbn-ts del frontend) -->
+		<dependency>
+			<groupId>com.nulab-inc</groupId>
+			<artifactId>zxcvbn</artifactId>
+			<version>1.9.0</version>
+		</dependency>
+
 		<!-- Source: https://mvnrepository.com/artifact/org.projectlombok/lombok -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>

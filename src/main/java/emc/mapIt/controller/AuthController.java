@@ -4,6 +4,10 @@ import emc.mapIt.dto.AuthLoginRequest;
 import emc.mapIt.dto.AuthRegisterRequest;
 import emc.mapIt.dto.AuthResponse;
 import emc.mapIt.dto.MapItUserResponse;
+import emc.mapIt.dto.RegisterResponse;
+import emc.mapIt.dto.ResendVerificationRequest;
+import emc.mapIt.dto.ResendVerificationResponse;
+import emc.mapIt.dto.VerifyEmailRequest;
 import emc.mapIt.service.AuthService;
 import emc.mapIt.service.UserService;
 import jakarta.validation.Valid;
@@ -27,8 +31,10 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <h3>Endpoints principales</h3>
  * <ul>
- *   <li><code>POST /api/v1/auth/register</code>: registro de usuario</li>
- *   <li><code>POST /api/v1/auth/login</code>: autenticación por email/password</li>
+ *   <li><code>POST /api/v1/auth/register</code>: registro de usuario (no autentica, ver verify-email)</li>
+ *   <li><code>POST /api/v1/auth/verify-email</code>: confirma el email con el token recibido por correo</li>
+ *   <li><code>POST /api/v1/auth/resend-verification</code>: reenvia el correo de verificacion</li>
+ *   <li><code>POST /api/v1/auth/login</code>: autenticación por email/password (requiere email verificado)</li>
  *   <li><code>GET /api/v1/auth/me</code>: perfil del usuario autenticado</li>
  *   <li><code>POST /api/v1/auth/logout</code>: cierre de sesión lógico (stateless)</li>
  * </ul>
@@ -63,21 +69,50 @@ public class AuthController {
     }
 
     /**
-     * Registra un usuario nuevo y devuelve sesión autenticada.
+     * Registra un usuario nuevo. No autentica: la cuenta queda sin verificar hasta
+     * que el usuario confirme su email (ver {@code /verify-email}).
      * <p>
-     * Retorna código HTTP 201 (Created) junto con token JWT y datos del usuario persistido.
+     * Retorna código HTTP 201 (Created) con el email registrado, sin token.
      * </p>
      *
      * @param request payload de registro validado
-     * @return {@link ResponseEntity} con estado 201 y {@link AuthResponse}
+     * @return {@link ResponseEntity} con estado 201 y {@link RegisterResponse}
      *
      * @see AuthService#register(AuthRegisterRequest)
      */
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody AuthRegisterRequest request) {
-        log.info("Registro de usuario {}", request);
-        AuthResponse response = authService.register(request);
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody AuthRegisterRequest request) {
+        log.info("Registro de usuario email={} userType={}", request.email(), request.userType());
+        RegisterResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Confirma el email de un usuario a partir del token recibido por correo.
+     *
+     * @param request token de verificacion
+     * @return 200 si el token era valido; {@link emc.mapIt.exception.GlobalExceptionHandler}
+     *         traduce el error si no lo era
+     */
+    @PostMapping("/verify-email")
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        log.debug("Verificacion de email solicitada");
+        authService.verifyEmail(request.token());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Reenvia el correo de verificacion si procede (email registrado, no verificado,
+     * fuera de cooldown). Responde siempre igual para no permitir enumeracion de usuarios.
+     *
+     * @param request email al que reenviar
+     * @return mensaje generico, independiente del resultado real
+     */
+    @PostMapping("/resend-verification")
+    public ResendVerificationResponse resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        log.debug("Reenvio de verificacion solicitado");
+        authService.resendVerification(request.email());
+        return new ResendVerificationResponse("Si el correo existe y no esta verificado, se ha reenviado un enlace.");
     }
 
     /**
