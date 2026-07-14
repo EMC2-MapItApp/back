@@ -231,10 +231,29 @@ $webTrunc
         output_config = @{ format = @{ type = "json_schema"; schema = (Get-ChangeSummarySchema) } }
     } | ConvertTo-Json -Depth 12
 
-    $response = Invoke-RestMethod -Uri "https://api.anthropic.com/v1/messages" -Method Post -Headers @{
-        "x-api-key"         = $env:ANTHROPIC_API_KEY
-        "anthropic-version" = "2023-06-01"
-    } -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+    # Se usa HttpClient en vez de Invoke-RestMethod: en Windows PowerShell 5.1
+    # Invoke-RestMethod no siempre rellena $_.ErrorDetails.Message con el cuerpo
+    # real en errores HTTP, lo que deja errores 4xx sin diagnóstico posible.
+    Add-Type -AssemblyName System.Net.Http
+    $httpClient = New-Object System.Net.Http.HttpClient
+    try {
+        $httpClient.DefaultRequestHeaders.Add("x-api-key", $env:ANTHROPIC_API_KEY)
+        $httpClient.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01")
+
+        $content = New-Object System.Net.Http.StringContent($body, [System.Text.Encoding]::UTF8, "application/json")
+        $httpResponse = $httpClient.PostAsync("https://api.anthropic.com/v1/messages", $content).GetAwaiter().GetResult()
+        $responseText = $httpResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+    }
+    finally {
+        $httpClient.Dispose()
+    }
+
+    if (-not $httpResponse.IsSuccessStatusCode) {
+        Write-Error "[commit-ai] La API de Anthropic ha devuelto un error ($([int]$httpResponse.StatusCode)):`n$responseText"
+        exit 1
+    }
+
+    $response = $responseText | ConvertFrom-Json
 
     $text = ($response.content | Where-Object { $_.type -eq "text" } | Select-Object -First 1).text
     $text = ($text -replace '^```(json)?\s*', '' -replace '```\s*$', '').Trim()
