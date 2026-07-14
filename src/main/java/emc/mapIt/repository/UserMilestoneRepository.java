@@ -8,6 +8,10 @@ import org.springframework.stereotype.Repository;
 import java.time.ZonedDateTime;
 import java.util.List;
 
+/**
+ * Acceso a {@link UserMilestone} — hitos de gamificación ya completados por cada usuario. Parte
+ * del sistema de niveles/XP en progreso; sin consumidor todavía en los servicios actuales.
+ */
 @Repository
 public interface UserMilestoneRepository extends MongoRepository<UserMilestone, String> {
 

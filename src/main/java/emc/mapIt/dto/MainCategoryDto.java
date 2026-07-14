@@ -6,6 +6,10 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/**
+ * Nodo raíz del árbol de categorías tal como lo consume el frontend en
+ * {@code GET /api/v1/categories/tree}, con sus {@link SubCategoryDto} anidados.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

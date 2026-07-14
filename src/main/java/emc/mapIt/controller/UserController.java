@@ -377,6 +377,7 @@ public class UserController {
 
             UserPatchRequest patch = new UserPatchRequest(
                     null, // name
+                    null, // nick
                     null, // avatarUrl
                     null, // phone
                     null, // city
@@ -430,6 +431,7 @@ public class UserController {
         if (currentFavorites.remove(locationTypeId)) {
             UserPatchRequest patch = new UserPatchRequest(
                     null, // name
+                    null, // nick
                     null, // avatarUrl
                     null, // phone
                     null, // city

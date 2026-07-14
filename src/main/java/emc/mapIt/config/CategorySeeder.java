@@ -13,6 +13,11 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Puebla el árbol de categorías (main category → subcategory → location type) al arrancar, solo
+ * si la colección de categorías está vacía — no se ejecuta de nuevo una vez sembrada, así que
+ * cambios posteriores al árbol se gestionan vía la API de categorías, no editando este seeder.
+ */
 @Component
 public class CategorySeeder implements CommandLineRunner {
 

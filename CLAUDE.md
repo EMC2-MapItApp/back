@@ -15,10 +15,10 @@ entidad) que interactuarían mediante "publicaciones" geolocalizadas asociadas a
 niveles/XP/capacidades y los tipos profesional/entidad están en progreso, no los des por
 completos ni cerrados.
 
-La persistencia es **MongoDB** (Spring Data MongoDB) — aunque `src/MapItAPIRequirements.md`
-describe un diseño con PostgreSQL/PostGIS, el código migró a MongoDB Atlas
-(`README_MIGRATION.md` documenta el script puntual de migración Postgres→Mongo en `scripts/`).
-Ante discrepancias, confía en el código/paquete `entity` antes que en ese documento de requisitos.
+La persistencia es **MongoDB** (Spring Data MongoDB) — el diseño original contemplaba
+PostgreSQL/PostGIS, pero el código migró a MongoDB Atlas pronto en el desarrollo (ver
+[BITACORA.md](BITACORA.md) para el porqué). No queda documento de requisitos relacional en el
+repo; confía en el código/paquete `entity` como fuente de verdad del modelo de dominio.
 
 El frontend Angular hermano vive en el directorio `WEB/` adyacente. Despliegue: este backend en
 **Google Cloud Run**, el frontend en **Cloudflare** (proyectos independientes, sin relación con
@@ -49,10 +49,10 @@ No hay linter configurado. Stack de tests: JUnit 5, Mockito, AssertJ, MockMvc (`
 tiene el desglose completo de la cobertura existente por clase — actualízalo al añadir grupos de
 tests relevantes).
 
-La documentación de despliegue vive en `docs/` (`DockerizacionBackend.md`, `Azure-deploy.md`,
-`GoogleCloudDeploy.md`) — hay docs de intentos/exploraciones previas con Azure que ya no aplican;
-el destino real de producción es **Google Cloud Run**. Revisa `.github/workflows/deploy.yml` para
-confirmar el pipeline activo antes de confiar en cualquier doc.
+La documentación de despliegue vive en `docs/` (`DockerizacionBackend.md`, `GoogleCloudDeploy.md`)
+— el destino real de producción es **Google Cloud Run**; una exploración previa con Azure se
+descartó (ver [BITACORA.md](BITACORA.md)). Revisa `.github/workflows/deploy.yml` para confirmar
+el pipeline activo antes de confiar en cualquier doc.
 
 ## Arquitectura
 

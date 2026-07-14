@@ -6,6 +6,11 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Cuenta de usuario de MapIt. Hoy solo el tipo {@link UserType#PARTICULAR} tiene un flujo de
+ * negocio completo alrededor (auth, perfil, publicaciones); {@code userType} ya distingue los
+ * demás valores del enum, pero su lógica específica está en progreso.
+ */
 @Document(collection = "users")
 public class User {
 
@@ -33,6 +38,10 @@ public class User {
 
     private Instant emailVerifiedAt;
 
+    /**
+     * Asocia el detalle de perfil a este usuario, propagando el propio id como referencia
+     * inversa ({@code details.userId}) para que ambos documentos queden enlazados.
+     */
     public void attachProfileDetails(UserProfileDetails details) {
         this.profileDetails = details;
         if (details != null) details.setUserId(this.id);

@@ -19,6 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * CRUD sobre los tres niveles del árbol de categorías (main category → subcategory →
+ * location type) y construcción del árbol completo para el frontend.
+ */
 @Service
 @Transactional
 public class CategoryCrudService {
@@ -37,6 +41,11 @@ public class CategoryCrudService {
         this.locationTypeRepository = locationTypeRepository;
     }
 
+    /**
+     * Construye el árbol completo main category → subcategory → location type. Carga las tres
+     * colecciones enteras de una vez (en vez de una query por subcategoría) y agrupa en memoria
+     * — a la escala actual del árbol (decenas de nodos) es más barato que N+1 queries.
+     */
     @Transactional(readOnly = true)
     public List<MainCategoryDto> getCategoryTree() {
         List<SubCategory> allSubCategories = subCategoryRepository.findAll();

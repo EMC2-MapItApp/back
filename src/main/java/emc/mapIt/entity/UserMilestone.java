@@ -6,6 +6,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZonedDateTime;
 
+/**
+ * Registro de que un {@link User} completó un {@link MilestoneDefinition}. El índice compuesto
+ * único impide registrar el mismo hito dos veces para el mismo usuario.
+ */
 @Document(collection = "user_milestones")
 @CompoundIndex(name = "uk_user_milestone", def = "{'userId': 1, 'milestoneId': 1}", unique = true)
 public class UserMilestone {

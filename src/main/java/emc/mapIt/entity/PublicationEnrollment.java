@@ -6,6 +6,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.ZonedDateTime;
 
+/**
+ * Inscripción de un usuario a una {@link Publication}. El índice compuesto único
+ * ({@code publicationId} + {@code userId}) impide inscripciones duplicadas a nivel de base de
+ * datos, sin depender solo de una comprobación previa en la capa de servicio.
+ */
 @Document(collection = "publication_enrollments")
 @CompoundIndex(name = "uk_enrollment", def = "{'publicationId': 1, 'userId': 1}", unique = true)
 public class PublicationEnrollment {

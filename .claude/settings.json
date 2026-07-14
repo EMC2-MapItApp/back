@@ -28,7 +28,8 @@
       "Bash(echo \"EXIT=$?\")",
       "Bash(command -v gcloud)",
       "Bash(gcloud config *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(grep -v \"^\\\\.git$\\\\|^target$\\\\|^\\\\.mvn$\")"
     ]
   }
 }

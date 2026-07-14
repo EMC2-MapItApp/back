@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+/** Acceso a {@link EmailVerificationToken} — el token en sí nunca se persiste en claro, solo su hash. */
 @Repository
 public interface EmailVerificationTokenRepository extends MongoRepository<EmailVerificationToken, String> {
 

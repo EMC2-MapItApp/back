@@ -7,6 +7,11 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+/**
+ * Nivel superior del árbol de categorías ({@link MainCategory} → {@link SubCategory} →
+ * {@link LocationType}) que clasifica los lugares. {@code icon}/{@code color} son puramente de
+ * presentación (frontend).
+ */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

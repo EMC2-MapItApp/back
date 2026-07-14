@@ -8,6 +8,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Acceso a {@link User}. Además de las consultas usadas hoy por {@code AuthService}/
+ * {@code UserService} ({@code findByEmail}, {@code existsByEmail}, {@code existsByNick}), incluye
+ * derivadas aún sin consumidor pensadas para funcionalidad en progreso (búsqueda por nick,
+ * segmentación por tipo de usuario o por nivel/XP para un futuro ranking).
+ */
 @Repository
 public interface UserRepository extends MongoRepository<User, String> {
 
@@ -25,7 +31,7 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     List<User> findByUnlockedCapabilities(String capability);
 
-    List<User> findByFavoriteLocationTypeIds(Long locationTypeId);
+    List<User> findByFavoriteLocationTypeIds(String locationTypeId);
 
     List<User> findByNameContainingIgnoreCase(String name);
 

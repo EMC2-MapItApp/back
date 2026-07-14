@@ -13,6 +13,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Configuración de Spring Security: API de tokens pura, sin sesiones ni cookies (CSRF
+ * deshabilitado, sesión {@code STATELESS}). Declara qué rutas son públicas y cuáles requieren un
+ * JWT válido; {@link JwtAuthFilter} es quien valida el token en cada request.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -23,11 +28,16 @@ public class SecurityConfig {
         this.jwtAuthFilter = jwtAuthFilter;
     }
 
+    /** BCrypt para el hash de contraseñas — ver también el límite de 72 bytes en {@code PasswordPolicyService}. */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Reglas de acceso por ruta. Todo lo no listado explícitamente como público requiere
+     * {@code Authorization: Bearer} válido (regla final {@code anyRequest().authenticated()}).
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -59,9 +69,6 @@ public class SecurityConfig {
 
                 // Perfiles de usuario - lectura pública
                 .requestMatchers(HttpMethod.GET, "/api/v1/users/**").permitAll()
-
-                // Test - endpoint de prueba
-                .requestMatchers(HttpMethod.GET, "/api/test/**").permitAll()
 
                 // Todo lo demás requiere token válido
                 .anyRequest().authenticated()

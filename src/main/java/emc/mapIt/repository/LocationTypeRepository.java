@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/** Acceso a {@link LocationType}, hoja del árbol de categorías. */
 @Repository
 public interface LocationTypeRepository extends MongoRepository<LocationType, String> {
 

@@ -5,6 +5,12 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+/**
+ * Definición de un hito de gamificación que otorga XP al cumplirse una condición
+ * ({@code conditionType} + {@code conditionValue}, p. ej. "publicaciones creadas ≥ 5"). El
+ * cumplimiento por usuario se registra en {@link UserMilestone}. Parte del sistema de
+ * niveles/XP en progreso.
+ */
 @Document(collection = "milestone_definitions")
 public class MilestoneDefinition {
 

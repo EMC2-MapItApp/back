@@ -5,6 +5,11 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+/**
+ * Definición de un nivel del sistema de gamificación (0-10): XP requerida para alcanzarlo y el
+ * perk que desbloquea. El {@code level} es el propio {@code @Id} (no un id generado). Parte del
+ * sistema de niveles/XP en progreso.
+ */
 @Document(collection = "level_definitions")
 public class LevelDefinition {
 

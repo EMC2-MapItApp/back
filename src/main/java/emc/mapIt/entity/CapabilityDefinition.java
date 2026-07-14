@@ -6,6 +6,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 
+/**
+ * Definición de una capacidad desbloqueable por un {@link User} (p. ej. límite de publicaciones
+ * simultáneas), ya sea alcanzando {@code unlocksAtLevel} o comprándola directamente
+ * ({@code purchasable} + {@code priceEur}). Parte del sistema de niveles/gamificación, en
+ * progreso — ver {@code UserController#unlockCapability}.
+ */
 @Document(collection = "capability_definitions")
 public class CapabilityDefinition {
 

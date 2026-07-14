@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/** Proyección de {@link emc.mapIt.entity.LocationType}, hoja del árbol de categorías. */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

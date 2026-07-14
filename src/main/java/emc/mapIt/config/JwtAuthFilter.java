@@ -18,6 +18,13 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
+/**
+ * Filtro de autenticación JWT ejecutado una vez por request. Si hay cabecera
+ * {@code Authorization: Bearer}, valida el token y rellena el {@code SecurityContextHolder}; si
+ * el token es inválido/expirado, responde el error inmediatamente. Si no hay cabecera, deja
+ * pasar la request sin autenticar — es {@link SecurityConfig} quien decide, por ruta, si eso
+ * basta o hace falta autenticación.
+ */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -29,6 +36,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Intenta autenticar la request a partir de la cabecera {@code Authorization}. Sin cabecera
+     * Bearer, continúa la cadena de filtros sin más (rutas públicas); con un token inválido,
+     * corta la cadena y devuelve el error JSON estándar del proyecto.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,

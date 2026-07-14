@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+/** Nivel intermedio del árbol de categorías, hijo de un {@link MainCategory} vía {@code mainCategoryId}. */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

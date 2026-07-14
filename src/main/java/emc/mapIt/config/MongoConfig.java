@@ -12,6 +12,11 @@ import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Date;
 
+/**
+ * Conversores custom para que Spring Data MongoDB sepa serializar/deserializar
+ * {@link ZonedDateTime} (MongoDB solo entiende {@link Date}/BSON date, sin zona horaria propia).
+ * Se normaliza siempre a UTC en lectura; la zona horaria original no se conserva.
+ */
 @Configuration
 public class MongoConfig {
 
@@ -23,6 +28,7 @@ public class MongoConfig {
         ));
     }
 
+    /** Convierte a {@link Date} (instante absoluto) al escribir en MongoDB. */
     @WritingConverter
     static class ZonedDateTimeWriteConverter implements Converter<ZonedDateTime, Date> {
         @Override
@@ -31,6 +37,7 @@ public class MongoConfig {
         }
     }
 
+    /** Reconstruye un {@link ZonedDateTime} en UTC al leer de MongoDB. */
     @ReadingConverter
     static class ZonedDateTimeReadConverter implements Converter<Date, ZonedDateTime> {
         @Override

@@ -23,15 +23,17 @@ JWT propio · desplegado en Google Cloud Run vía CI/CD con GitHub Actions.
 
 ## Índice
 
-- [Estado del proyecto](#estado-del-proyecto)
-- [Arquitectura](#arquitectura)
-- [Stack tecnológico](#stack-tecnológico)
-- [Funcionalidad implementada](#funcionalidad-implementada)
-- [Puesta en marcha local](#puesta-en-marcha-local)
-- [Tests](#tests)
-- [CI/CD y despliegue](#cicd-y-despliegue)
-- [Estructura del código](#estructura-del-código)
-- [Documentación adicional](#documentación-adicional)
+- [MapIt API](#mapit-api)
+  - [Índice](#índice)
+  - [Estado del proyecto](#estado-del-proyecto)
+  - [Arquitectura](#arquitectura)
+  - [Stack tecnológico](#stack-tecnológico)
+  - [Funcionalidad implementada](#funcionalidad-implementada)
+  - [Puesta en marcha local](#puesta-en-marcha-local)
+  - [Tests](#tests)
+  - [CI/CD y despliegue](#cicd-y-despliegue)
+  - [Estructura del código](#estructura-del-código)
+  - [Documentación adicional](#documentación-adicional)
 
 ---
 
@@ -53,7 +55,11 @@ vivo que evoluciona con el tiempo disponible.
 | Geolocalización por IP (fallback de ubicación) | ✅ Completo |
 | CI/CD a Google Cloud Run | ✅ Completo |
 | Niveles, XP, capacidades, milestones | 🚧 Modelo creado, lógica en progreso |
-| Usuarios profesional / entidad | 🚧 No implementado |
+| Profesionaes / Entidades (Ayuntamientos, Asociaciones, etc.) | 🚧 No implementado |
+| Grupos (Creación de grupos públicos y privados) | 🚧 No implementado |
+
+---
+
 
 ## Arquitectura
 
@@ -79,8 +85,9 @@ flowchart LR
     CR --> SMTP
     CR --> IPAPI
     GH -- "docker build/push" --> AR
+    
     AR -- "gcloud run deploy" --> CR
-    GH -. "push a main_back" .-> GH
+   
 ```
 
 La API es stateless (sin sesiones ni cookies): cada request se autentica con un JWT propio
@@ -108,14 +115,14 @@ consideradas y enlaces a la configuración real) está en **[docs/STACK.md](docs
 ## Funcionalidad implementada
 
 ```
-POST   /api/v1/auth/register                  Registro (envía email de verificación)
+POST   /api/v1/auth/register                   Registro (envía email de verificación)
 POST   /api/v1/auth/verify-email               Verificación de cuenta
 POST   /api/v1/auth/resend-verification        Reenvío del email de verificación
 POST   /api/v1/auth/login                      Login → JWT
 GET    /api/v1/auth/me                         Usuario autenticado actual
 POST   /api/v1/auth/logout                     Logout (stateless)
 
-GET    /api/v1/users/{id}                      Perfil público de usuario
+GET    /api/v1/users/{id}                       Perfil público de usuario
 PATCH  /api/v1/users/{id}                       Editar perfil propio
 GET    /api/v1/users/{id}/profile               Detalle de perfil
 GET    /api/v1/users/{id}/stats                 Estadísticas de usuario
@@ -127,8 +134,8 @@ GET    /api/v1/users/{id}/publications          Publicaciones del usuario
 POST   /api/v1/users/{id}/favorites/{typeId}    Añadir lugar favorito
 DELETE /api/v1/users/{id}/favorites/{typeId}    Quitar lugar favorito
 
-POST   /api/v1/publications                    Crear publicación geolocalizada
-GET    /api/v1/publications                     Listar publicaciones
+POST   /api/v1/publications                      Crear publicación geolocalizada
+GET    /api/v1/publications                      Listar publicaciones
 GET    /api/v1/publications/{id}                 Detalle de publicación
 GET    /api/v1/publications/author/{authorId}    Publicaciones de un autor
 DELETE /api/v1/publications/{id}                 Borrar publicación propia
@@ -143,9 +150,7 @@ POST   /api/v1/categories/main                   Crear categoría (admin)
 GET    /api/v1/geo/me                            Ubicación aproximada por IP
 ```
 
-Rutas públicas (GET) vs. protegidas por JWT se declaran en `SecurityConfig` — ver
-[CLAUDE.md](CLAUDE.md#auth-jwt-propio-basado-en-hmac-sin-librería-externa-de-jwt-vía-jwtservice)
-para el detalle exacto.
+Rutas públicas (GET) vs. protegidas por JWT se declaran en `SecurityConfig`.
 
 ## Puesta en marcha local
 
@@ -222,6 +227,6 @@ src/main/java/emc/mapIt/
 - [docs/tests.md](docs/tests.md) — cobertura de tests por clase
 - [docs/GoogleCloudDeploy.md](docs/GoogleCloudDeploy.md) — pipeline y configuración de Cloud Run
 - [docs/DockerizacionBackend.md](docs/DockerizacionBackend.md) — dockerización paso a paso
-- [docs/BACKEND_API_SPEC.md](docs/BACKEND_API_SPEC.md) / [docs/CONSUMIR_AUTH_API.md](docs/CONSUMIR_AUTH_API.md) — especificación y guía de consumo de la API de auth
+- [BITACORA.md](BITACORA.md) — problemas reales encontrados durante el desarrollo/despliegue y cómo se resolvieron
 - [CLAUDE.md](CLAUDE.md) — contexto de arquitectura para trabajar en el repo con Claude Code
 - [llms.txt](llms.txt) — punto de entrada estructurado para agentes/LLMs ([convención llms.txt](https://llmstxt.org/))

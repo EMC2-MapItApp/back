@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/** Nodo intermedio del árbol de categorías, con sus {@link LocationTypeDto} hijos anidados. */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

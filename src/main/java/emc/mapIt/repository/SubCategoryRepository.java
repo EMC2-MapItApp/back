@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/** Acceso a {@link SubCategory}, nivel intermedio del árbol de categorías. */
 @Repository
 public interface SubCategoryRepository extends MongoRepository<SubCategory, String> {
 

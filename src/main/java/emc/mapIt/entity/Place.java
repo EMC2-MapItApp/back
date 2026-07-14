@@ -8,6 +8,11 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.math.BigDecimal;
 import java.util.Map;
 
+/**
+ * Lugar físico geolocalizado (comercio, espacio público, sede...) propiedad de un usuario, al que
+ * se pueden asociar publicaciones. {@code metadata} guarda atributos libres específicos del
+ * {@code locationTypeId} sin necesidad de un esquema rígido por tipo de lugar.
+ */
 @Document(collection = "places")
 public class Place {
 

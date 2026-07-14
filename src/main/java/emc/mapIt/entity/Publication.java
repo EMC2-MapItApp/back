@@ -9,6 +9,12 @@ import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
+/**
+ * Publicación geolocalizada creada por un usuario: un {@link PublicationType#EVENT} puntual (con
+ * su propia {@code lat}/{@code lng} cuando no está ligado a un {@link Place}) o una
+ * {@link PublicationType#PROMOTION} asociada a un lugar existente ({@code placeId}). Varios
+ * campos son nullable según el tipo — ver comentarios inline en cada campo.
+ */
 @Document(collection = "publications")
 public class Publication {
 

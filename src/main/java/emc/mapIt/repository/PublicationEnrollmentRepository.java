@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/** Acceso a {@link PublicationEnrollment} — inscripciones de usuarios a publicaciones. */
 @Repository
 public interface PublicationEnrollmentRepository extends MongoRepository<PublicationEnrollment, String> {
 

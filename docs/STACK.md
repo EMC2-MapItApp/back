@@ -32,10 +32,9 @@ Ver `pom.xml` para la lista completa de dependencias y los perfiles `dev`/`prod`
 | [MongoDB Atlas](https://www.mongodb.com/atlas) | Free tier gestionado (M0) — sin servidor propio que mantener/parchear. El modelo de dominio (publicaciones geolocalizadas, árbol de categorías anidado) encaja mejor con documentos que con un esquema relacional estricto. |
 | [Spring Data MongoDB](https://spring.io/projects/spring-data-mongodb) | Repositorios declarativos (`MongoRepository`) sin capa de acceso a datos manual. |
 
-El proyecto migró desde un diseño inicial en PostgreSQL/PostGIS (ver
-[`src/MapItAPIRequirements.md`](../src/MapItAPIRequirements.md) y
-[`README_MIGRATION.md`](../README_MIGRATION.md)) — el requisito de geoconsultas complejas de
-PostGIS no llegó a ser necesario para el alcance actual, y Atlas simplificó el despliegue.
+El proyecto migró desde un diseño inicial en PostgreSQL/PostGIS — el requisito de geoconsultas
+complejas de PostGIS no llegó a ser necesario para el alcance actual, y Atlas simplificó el
+despliegue. Detalle de esa decisión en [BITACORA.md](../BITACORA.md).
 
 ## Autenticación
 

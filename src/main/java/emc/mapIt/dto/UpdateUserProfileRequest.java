@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
+/** Payload de {@code PATCH /api/v1/users/{id}} para editar el perfil propio. */
 public class UpdateUserProfileRequest {
 
     @NotBlank
