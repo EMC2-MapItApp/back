@@ -1,0 +1,42 @@
+# MapIt API
+
+> Backend REST de MapIt, una plataforma de eventos y lugares locales geolocalizados con un
+> componente de gamificación (niveles/XP/capacidades) en progreso. Java 21, Spring Boot 3.3,
+> MongoDB Atlas, JWT propio (HMAC, sin librería externa). Desplegado en Google Cloud Run vía
+> GitHub Actions. Proyecto personal de portfolio: aplicación mínima pero real y desplegada, no un
+> ejercicio de arquitectura sobre el papel.
+
+Este archivo sigue la convención [llms.txt](https://llmstxt.org/) para dar a agentes/LLMs un
+punto de entrada estructurado al repositorio.
+
+## Documentos clave
+
+- [README.md](README.md) — visión general, arquitectura, cómo levantarlo en local, endpoints.
+- [docs/STACK.md](docs/STACK.md) — stack y servicios en detalle, con el porqué de cada elección.
+- [docs/tests.md](docs/tests.md) — cobertura de tests por clase.
+- [docs/GoogleCloudDeploy.md](docs/GoogleCloudDeploy.md) — pipeline CI/CD y configuración de Cloud Run.
+- [CLAUDE.md](CLAUDE.md) — contexto de arquitectura y convenciones de código.
+
+## API
+
+- Base en producción: `https://backend-931882563225.europe-southwest1.run.app/api/v1`
+- Auth: JWT propio vía cabecera `Authorization: Bearer`. Rutas públicas (sin token): `GET
+  /categories/**`, `GET /publications`, `GET /users/**`, `GET /geo/**`, y register/login/logout
+  de `/auth`. El resto requiere token válido.
+- Recursos principales: `auth`, `users` (perfil, capacidades, milestones, favoritos,
+  publicaciones), `publications` (crear/listar/inscribirse), `categories` (árbol categoría →
+  subcategoría → tipo de lugar), `geo` (geolocalización aproximada por IP).
+
+## Repositorio hermano
+
+- Frontend Angular: https://github.com/EMC2-MapItApp/web — consume esta API, desplegado en
+  Cloudflare Workers en https://mapit-web.com (con su propio `/stack` y `llms.txt`).
+
+## Notas para agentes
+
+- El diseño original (`src/MapItAPIRequirements.md`) describe PostgreSQL/PostGIS y tres tipos de
+  usuario completos — quedó desactualizado tras la migración a MongoDB (ver
+  `README_MIGRATION.md`). Confiar en el código (`src/main/java/emc/mapIt/entity`) antes que en
+  ese documento de requisitos.
+- Solo el tipo de usuario `INDIVIDUAL` está implementado de verdad; niveles/XP/capacidades y los
+  tipos profesional/entidad están en progreso.

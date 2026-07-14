@@ -27,7 +27,8 @@
       "Bash(npx -y -p mongodb node -e \"console.log\\('hello'\\)\")",
       "Bash(echo \"EXIT=$?\")",
       "Bash(command -v gcloud)",
-      "Bash(gcloud config *)"
+      "Bash(gcloud config *)",
+      "Bash(npm run *)"
     ]
   }
 }
