@@ -20,6 +20,7 @@ public class MapItUser {
 
     private String id;
     private String name;
+    private String nick;
     private String email;
     private String passwordHash;
     private UserType userType;
@@ -108,6 +109,7 @@ public class MapItUser {
         return "MapItUser{" +
                 "id=" + id +
                 ", name='" + name + '\'' +
+                ", nick='" + nick + '\'' +
                 ", email='" + email + '\'' +
                 ", userType=" + userType +
                 ", level=" + level +

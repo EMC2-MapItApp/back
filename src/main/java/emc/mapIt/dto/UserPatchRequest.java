@@ -1,6 +1,7 @@
 package emc.mapIt.dto;
 
 import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ import java.util.List;
  *
  * <ul>
  * <li>{@code name}: actualiza {@code users.name}</li>
+ * <li>{@code nick}: actualiza {@code users.nick}, validando unicidad</li>
  * <li>{@code avatarUrl}, {@code phone}, {@code city}, {@code province},
  * {@code bio}, {@code birthDate}: actualizan {@code user_profile_details}</li>
  * <li>{@code favoriteLocationTypeIds}: solo para usuarios tipo INDIVIDUAL</li>
@@ -26,6 +28,9 @@ public record UserPatchRequest(
 
                 /** Nombre visible del usuario. */
                 @Size(max = 100) String name,
+
+                /** Nombre de usuario único (opcional, se valida unicidad si cambia). */
+                @Size(min = 3, max = 30) @Pattern(regexp = "^[A-Za-z0-9._-]+$") String nick,
 
                 /** URL del avatar del usuario. */
                 String avatarUrl,

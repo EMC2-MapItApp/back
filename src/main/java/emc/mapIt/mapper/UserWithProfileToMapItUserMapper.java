@@ -39,6 +39,7 @@ public class UserWithProfileToMapItUserMapper {
                 user.getUserType()
         );
 
+        mapItUser.setNick(user.getNick());
         mapItUser.setEmailVerified(user.isEmailVerified());
 
         if (profileDetails != null) {

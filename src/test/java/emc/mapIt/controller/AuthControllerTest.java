@@ -45,7 +45,7 @@ class AuthControllerTest {
     @MockBean JwtService jwtService;
 
     private static final MapItUserResponse USER_RESPONSE = new MapItUserResponse(
-            "id-1", "Ana", "ana@test.com", UserType.PARTICULAR,
+            "id-1", "Ana", "ana", "ana@test.com", UserType.PARTICULAR,
             0, 0, null, null, null, null, null, null, null, null, null, null);
 
     private static final AuthResponse AUTH_RESPONSE = new AuthResponse("jwt-token", USER_RESPONSE);
@@ -57,7 +57,7 @@ class AuthControllerTest {
     void register_conBodyValido_devuelve201SinToken() throws Exception {
         when(authService.register(any())).thenReturn(REGISTER_RESPONSE);
 
-        AuthRegisterRequest body = new AuthRegisterRequest("Ana", "ana@test.com", "pass1234", UserType.PARTICULAR);
+        AuthRegisterRequest body = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "pass1234", UserType.PARTICULAR);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -70,7 +70,7 @@ class AuthControllerTest {
     @Test
     void register_conEmailInvalido_devuelve400() throws Exception {
         String bodyInvalido = """
-                {"name":"Ana","email":"no-es-un-email","password":"pass1234","userType":"PARTICULAR"}
+                {"name":"Ana","nick":"ana","email":"no-es-un-email","password":"pass1234","userType":"PARTICULAR"}
                 """;
 
         mockMvc.perform(post("/api/v1/auth/register")
@@ -89,7 +89,7 @@ class AuthControllerTest {
     @Test
     void register_conPasswordCortaMenosDe8_devuelve400() throws Exception {
         String bodyInvalido = """
-                {"name":"Ana","email":"ana@test.com","password":"corta1","userType":"PARTICULAR"}
+                {"name":"Ana","nick":"ana","email":"ana@test.com","password":"corta1","userType":"PARTICULAR"}
                 """;
 
         mockMvc.perform(post("/api/v1/auth/register")
@@ -103,7 +103,7 @@ class AuthControllerTest {
         when(authService.register(any())).thenThrow(
                 new ApiException("WEAK_PASSWORD", "La contraseña es demasiado débil.", HttpStatus.BAD_REQUEST));
 
-        AuthRegisterRequest body = new AuthRegisterRequest("Ana", "ana@test.com", "password", UserType.PARTICULAR);
+        AuthRegisterRequest body = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "password", UserType.PARTICULAR);
 
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

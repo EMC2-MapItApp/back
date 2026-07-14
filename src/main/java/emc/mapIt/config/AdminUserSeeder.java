@@ -25,11 +25,13 @@ public class AdminUserSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         final String ADMIN_EMAIL = "eusebio.montero@gmail.com";
+        final String ADMIN_NICK = "admin";
         final String ADMIN_PASSWORD = "12345678";
 
         if (userRepository.findByEmail(ADMIN_EMAIL).isEmpty()) {
             User adminUser = new User();
             adminUser.setName("Eusebio Montero");
+            adminUser.setNick(ADMIN_NICK);
             adminUser.setEmail(ADMIN_EMAIL);
             adminUser.setPasswordHash(passwordEncoder.encode(ADMIN_PASSWORD));
             adminUser.setUserType(UserType.ADMIN);

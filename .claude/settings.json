@@ -1,4 +1,5 @@
 {
+  "respectGitignore": true,
   "permissions": {
     "allow": [
       "Bash(./mvnw test)",
@@ -24,7 +25,9 @@
       "Bash(curl -s -o /dev/null -w \"backend status=%{http_code}\\\\n\" http://localhost:8081/api/v1/auth/resend-verification -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"ping@test.com\"}')",
       "Bash(npx -y -p mongodb node -e ' *)",
       "Bash(npx -y -p mongodb node -e \"console.log\\('hello'\\)\")",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(command -v gcloud)",
+      "Bash(gcloud config *)"
     ]
   }
 }

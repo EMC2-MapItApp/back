@@ -57,7 +57,7 @@ class AuthServiceTest {
         mapItUser.setEmailVerified(true);
 
         userResponse = new MapItUserResponse(
-                "id-1", "Ana", "ana@test.com", UserType.PARTICULAR,
+                "id-1", "Ana", "ana", "ana@test.com", UserType.PARTICULAR,
                 0, 0, null, null, null, null, null, null, null, null, null, null);
     }
 
@@ -65,7 +65,7 @@ class AuthServiceTest {
 
     @Test
     void register_conDatosValidos_devuelveRegisterResponseSinToken() {
-        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana@test.com", "pass1234", UserType.PARTICULAR);
+        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "pass1234", UserType.PARTICULAR);
 
         when(authRegisterToUserMapper.toEntity(request)).thenReturn(userGuardado);
         when(passwordEncoder.encode("pass1234")).thenReturn("bcrypt-hash");
@@ -74,14 +74,14 @@ class AuthServiceTest {
         RegisterResponse response = authService.register(request);
 
         assertThat(response.email()).isEqualTo("ana@test.com");
-        verify(passwordPolicyService).validate("pass1234", List.of("Ana", "ana@test.com"));
+        verify(passwordPolicyService).validate("pass1234", List.of("Ana", "ana", "ana@test.com"));
         verify(emailVerificationService).issueAndSend(userGuardado);
         verify(jwtService, never()).generateToken(any());
     }
 
     @Test
     void register_conPasswordDebil_lanzaApiExceptionYNoCreaUsuario() {
-        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana@test.com", "12345678", UserType.PARTICULAR);
+        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "12345678", UserType.PARTICULAR);
 
         doThrow(new ApiException("WEAK_PASSWORD", "debil", org.springframework.http.HttpStatus.BAD_REQUEST))
                 .when(passwordPolicyService).validate(eq("12345678"), any());
@@ -102,21 +102,21 @@ class AuthServiceTest {
 
     @Test
     void register_conEmailBlanco_lanzaApiException() {
-        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "  ", "pass1234", UserType.PARTICULAR);
+        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "  ", "pass1234", UserType.PARTICULAR);
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(ApiException.class);
     }
 
     @Test
     void register_conPasswordBlanca_lanzaApiException() {
-        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana@test.com", "", UserType.PARTICULAR);
+        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "", UserType.PARTICULAR);
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(ApiException.class);
     }
 
     @Test
     void register_conUserTypeNull_lanzaApiException() {
-        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana@test.com", "pass1234", null);
+        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "pass1234", null);
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(ApiException.class);
     }

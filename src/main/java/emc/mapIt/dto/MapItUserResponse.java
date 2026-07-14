@@ -34,6 +34,9 @@ public record MapItUserResponse(
                 /** Nombre visible del usuario. */
                 String name,
 
+                /** Nombre de usuario único (normalizado lowercase). */
+                String nick,
+
                 /** Email de acceso (normalizado lowercase). */
                 String email,
 

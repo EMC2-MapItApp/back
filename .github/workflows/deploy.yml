@@ -15,7 +15,7 @@
 name: CI/CD Backend
 
 # ── Disparador ──────────────────────────────────────────────────
-# Solo se activa con push a la rama main.
+# Solo se activa con push a la rama main_back.
 # Las ramas de desarrollo (feature/*, fix/*) no despliegan a produccion.
 on:
   push:
@@ -95,10 +95,20 @@ jobs:
       # Cloud Run crea una nueva revision, enruta el trafico hacia ella
       # y termina las instancias de la revision anterior (zero-downtime).
       # --quiet suprime confirmaciones interactivas (requerido en CI)
+      #
+      # --set-env-vars / --set-secrets declaran aqui, en codigo, toda la config de
+      # runtime (antes vivia solo en la consola de Cloud Run, sin rastro en git).
+      # OJO: ambas flags REEMPLAZAN el conjunto completo de esa categoria en la nueva
+      # revision, no lo mezclan con lo que hubiera antes. Si se añade una variable o
+      # secreto nuevo hay que sumarlo a la lista existente aqui abajo; si no, el
+      # siguiente deploy borra silenciosamente cualquier env var/secreto que solo
+      # estuviera puesto a mano en la consola.
       - name: Deploy en Cloud Run
         run: |
           gcloud run deploy backend \
             --image europe-southwest1-docker.pkg.dev/mapitback/mapit-repo/backend:latest \
             --region europe-southwest1 \
             --project mapitback \
+            --set-env-vars SPRING_PROFILES_ACTIVE=prod,MAPIT_JWT_EXPIRATION=86400,MAPIT_SMTP_HOST=smtp.resend.com,MAPIT_SMTP_PORT=587,MAPIT_MAIL_FROM=no-reply@mapit-web.com,MAPIT_FRONTEND_URL=https://mapit-web.com \
+            --set-secrets MAPIT_JWT_SECRET=MAPIT_JWT_SECRET:latest,SPRING_DATA_MONGODB_URI=MAPIT_MONGO_URI:latest,MAPIT_SMTP_USERNAME=MAPIT_SMTP_USERNAME:latest,MAPIT_SMTP_PASSWORD=MAPIT_SMTP_PASSWORD:latest \
             --quiet

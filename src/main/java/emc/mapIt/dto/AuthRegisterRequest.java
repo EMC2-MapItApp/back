@@ -17,6 +17,7 @@ import jakarta.validation.constraints.Size;
  */
 public record AuthRegisterRequest(
         @NotBlank @Size(max = 120) String name,
+        @NotBlank @Size(min = 3, max = 30) @Pattern(regexp = "^[A-Za-z0-9._-]+$") String nick,
         @NotBlank @Email @Pattern(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$") String email,
         @NotBlank @Size(min = 8, max = 72) String password,
         @NotNull UserType userType

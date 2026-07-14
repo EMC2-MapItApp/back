@@ -88,8 +88,8 @@ public class UserService {
         if (candidate == null) {
             throw new ApiException("BAD_REQUEST", "El usuario es requerido", HttpStatus.BAD_REQUEST);
         }
-        if (isBlank(candidate.getName()) || isBlank(candidate.getEmail()) || isBlank(candidate.getPasswordHash())
-                || candidate.getUserType() == null) {
+        if (isBlank(candidate.getName()) || isBlank(candidate.getNick()) || isBlank(candidate.getEmail())
+                || isBlank(candidate.getPasswordHash()) || candidate.getUserType() == null) {
             throw new ApiException("BAD_REQUEST", "Datos incompletos para crear usuario", HttpStatus.BAD_REQUEST);
         }
 
@@ -98,8 +98,14 @@ public class UserService {
             throw new ApiException("CONFLICT", "Ya existe un usuario con ese email", HttpStatus.CONFLICT);
         }
 
+        String normalizedNick = normalizeNick(candidate.getNick());
+        if (userRepository.existsByNick(normalizedNick)) {
+            throw new ApiException("CONFLICT", "Ya existe un usuario con ese nick", HttpStatus.CONFLICT);
+        }
+
         // Asegurar normalización consistente antes de persistir
         candidate.setName(candidate.getName().trim());
+        candidate.setNick(normalizedNick);
         candidate.setEmail(normalizedEmail);
         if (candidate.getProfileDetails() == null) {
             log.debug("Inicializando UserProfileDetails para email={}", normalizedEmail);
@@ -166,6 +172,8 @@ public class UserService {
      * </p>
      * <ul>
      * <li>{@code name}: actualiza si no está en blanco</li>
+     * <li>{@code nick}: actualiza si no está en blanco, validando unicidad
+     * (excepto si coincide con el nick actual del propio usuario)</li>
      * <li>{@code avatarUrl}: actualiza URL (puede ser nulo)</li>
      * <li>{@code favoriteLocationTypeIds}: solo para tipo INDIVIDUAL, con
      * validación de nivel</li>
@@ -176,6 +184,7 @@ public class UserService {
      * @return usuario actualizado desde BD
      * @throws ApiException con código BAD_REQUEST si id es nulo
      * @throws ApiException con código NOT_FOUND si el usuario no existe
+     * @throws ApiException con código CONFLICT si el nick ya está en uso por otro usuario
      * @throws ApiException con código UNPROCESSABLE_ENTITY si favoritos incumplen
      *                      regla de nivel
      */
@@ -193,6 +202,15 @@ public class UserService {
 
         if (patch.name() != null && !patch.name().isBlank()) {
             user.setName(patch.name().trim());
+        }
+
+        if (patch.nick() != null && !patch.nick().isBlank()) {
+            String normalizedNick = normalizeNick(patch.nick());
+            if (!normalizedNick.equals(user.getNick())
+                    && userRepository.existsByNick(normalizedNick)) {
+                throw new ApiException("CONFLICT", "Ya existe un usuario con ese nick", HttpStatus.CONFLICT);
+            }
+            user.setNick(normalizedNick);
         }
 
         UserProfileDetails profileDetails = getOrCreateProfileDetails(user);
@@ -286,6 +304,7 @@ public class UserService {
         return new MapItUserResponse(
                 user.getId(),
                 user.getName(),
+                user.getNick(),
                 user.getEmail(),
                 user.getUserType(),
                 user.getLevel(),
@@ -320,6 +339,7 @@ public class UserService {
                 user.getPasswordHash(),
                 user.getUserType());
 
+        domain.setNick(user.getNick());
         domain.setEmailVerified(user.isEmailVerified());
 
         UserProfileDetails profileDetails = user.getProfileDetails();
@@ -364,6 +384,7 @@ public class UserService {
         User user = new User();
         user.setId(domain.getId());
         user.setName(domain.getName());
+        user.setNick(normalizeNick(domain.getNick()));
         user.setEmail(normalizeEmail(domain.getEmail()));
         user.setPasswordHash(domain.getPasswordHash());
         user.setUserType(domain.getUserType());
@@ -445,6 +466,13 @@ public class UserService {
      */
     private String normalizeEmail(String email) {
         return email == null ? "" : email.trim().toLowerCase();
+    }
+
+    /**
+     * Normaliza nick para consultas y persistencia (unicidad case-insensitive).
+     */
+    private String normalizeNick(String nick) {
+        return nick == null ? "" : nick.trim().toLowerCase();
     }
 
     /**
