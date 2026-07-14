@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import emc.mapIt.dto.AuthLoginRequest;
 import emc.mapIt.dto.AuthRegisterRequest;
 import emc.mapIt.dto.AuthResponse;
+import emc.mapIt.dto.ForgotPasswordRequest;
 import emc.mapIt.dto.MapItUserResponse;
 import emc.mapIt.dto.RegisterResponse;
 import emc.mapIt.dto.ResendVerificationRequest;
+import emc.mapIt.dto.ResetPasswordRequest;
 import emc.mapIt.dto.VerifyEmailRequest;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
@@ -191,6 +193,85 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    // ── POST /forgot-password ───────────────────────────────────
+
+    @Test
+    void forgotPassword_conEmailRegistrado_devuelve200ConMensaje() throws Exception {
+        ForgotPasswordRequest body = new ForgotPasswordRequest("ana@test.com");
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void forgotPassword_conEmailNoRegistrado_devuelve404() throws Exception {
+        doThrow(new ApiException("NOT_FOUND", "No existe ninguna cuenta con ese correo electrónico.", HttpStatus.NOT_FOUND))
+                .when(authService).forgotPassword(anyString());
+
+        ForgotPasswordRequest body = new ForgotPasswordRequest("no-registrado@test.com");
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void forgotPassword_conEmailInvalido_devuelve400() throws Exception {
+        String bodyInvalido = """
+                {"email":"no-es-un-email"}
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bodyInvalido))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── POST /reset-password ────────────────────────────────────
+
+    @Test
+    void resetPassword_conTokenValido_devuelve200() throws Exception {
+        ResetPasswordRequest body = new ResetPasswordRequest("token-valido", "nuevaPass1234");
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void resetPassword_conTokenInvalido_devuelve400() throws Exception {
+        doThrow(new ApiException("INVALID_TOKEN", "invalido", HttpStatus.BAD_REQUEST))
+                .when(authService).resetPassword(anyString(), anyString());
+
+        ResetPasswordRequest body = new ResetPasswordRequest("token-invalido", "nuevaPass1234");
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void resetPassword_conPasswordDebil_devuelve400() throws Exception {
+        doThrow(new ApiException("WEAK_PASSWORD", "La contraseña es demasiado débil.", HttpStatus.BAD_REQUEST))
+                .when(authService).resetPassword(anyString(), anyString());
+
+        ResetPasswordRequest body = new ResetPasswordRequest("token-valido", "12345678");
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("WEAK_PASSWORD"));
     }
 
     // ── POST /logout ─────────────────────────────────────────────

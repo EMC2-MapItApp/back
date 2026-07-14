@@ -14,7 +14,8 @@ src/test/java/emc/mapIt/
 │   ├── JwtServiceTest.java                ← unitario puro
 │   ├── AuthServiceTest.java               ← unitario con Mockito
 │   ├── PasswordPolicyServiceTest.java     ← unitario puro (Fase 1 auth)
-│   └── EmailVerificationServiceTest.java  ← unitario con Mockito (Fase 1 auth)
+│   ├── EmailVerificationServiceTest.java  ← unitario con Mockito (Fase 1 auth)
+│   └── PasswordResetServiceTest.java      ← unitario con Mockito (Fase 1 auth)
 └── controller/
     └── AuthControllerTest.java     ← capa web con MockMvc
 ```
@@ -67,6 +68,9 @@ Dependencias mockeadas:
 - `JwtService`
 - `AuthRegisterToUserMapper`
 - `UserWithProfileToMapItUserMapper`
+- `PasswordPolicyService`
+- `EmailVerificationService`
+- `PasswordResetService`
 
 ### Grupo: `register`
 
@@ -87,6 +91,13 @@ Dependencias mockeadas:
 | `login_conPasswordIncorrecta_lanzaApiException` | Password incorrecta lanza `ApiException` con mensaje `"invalidas"` |
 | `login_conRequestNull_lanzaApiException` | Request `null` lanza `ApiException` |
 | `login_conEmailBlanco_lanzaApiException` | Email vacío lanza `ApiException` |
+
+### Grupo: `forgotPassword` / `resetPassword` (Fase 1 auth)
+
+| Método de test | Descripción |
+|---|---|
+| `forgotPassword_delegaEnPasswordResetService` | Delega en `PasswordResetService.requestReset` |
+| `resetPassword_delegaEnPasswordResetService` | Delega en `PasswordResetService.resetPassword` |
 
 ---
 
@@ -125,6 +136,27 @@ Dependencias mockeadas: `EmailVerificationTokenRepository`, `UserRepository`, `H
 | `resend_conEmailYaVerificado_noEnviaCorreo` | Usuario ya verificado no recibe reenvío |
 | `resend_dentroDeCooldown_noReenviaCorreo` | Reenvío reciente (dentro del cooldown server-side) no reenvía |
 | `resend_fueraDeCooldown_reenviaCorreo` | Fuera del cooldown, reemite y envía |
+
+---
+
+## PasswordResetServiceTest (Fase 1 auth)
+
+**Tipo:** Unitario con Mockito.
+**Clase bajo test:** `emc.mapIt.service.PasswordResetService`
+
+Dependencias mockeadas: `PasswordResetTokenRepository`, `UserRepository`, `HashService`, `MailService`, `PasswordEncoder`, `PasswordPolicyService`.
+
+| Método de test | Descripción |
+|---|---|
+| `requestReset_conEmailRegistrado_creaTokenYEnviaCorreo` | Genera token, lo guarda hasheado y llama a `MailService` |
+| `requestReset_conEmailNoRegistrado_lanzaApiExceptionNotFound` | Email no registrado lanza `ApiException` (`NOT_FOUND`) — a diferencia de `resend`, aquí sí se distingue |
+| `requestReset_dentroDeCooldown_noReenviaCorreo` | Solicitud reciente (dentro del cooldown server-side) no reenvía |
+| `requestReset_fueraDeCooldown_reenviaCorreo` | Fuera del cooldown, reemite y envía |
+| `resetPassword_conTokenValido_actualizaPasswordYConsumeToken` | Token válido actualiza el hash de contraseña, consume el token y borra otros tokens pendientes del usuario |
+| `resetPassword_conTokenExpirado_lanzaApiException` | Token expirado lanza `ApiException` (`INVALID_TOKEN`) |
+| `resetPassword_conTokenYaConsumido_lanzaApiException` | Token ya consumido lanza `ApiException` |
+| `resetPassword_conTokenInexistente_lanzaApiException` | Token desconocido lanza `ApiException` |
+| `resetPassword_conPasswordDebil_lanzaApiExceptionYNoActualizaPassword` | Password débil lanza `ApiException` (`WEAK_PASSWORD`) sin tocar el usuario |
 
 ---
 
@@ -173,6 +205,24 @@ Desde Fase 1, el registro ya no autentica (no devuelve token; el usuario debe ve
 |---|---|
 | `resendVerification_siempreDevuelve200ConMensajeGenerico` | Siempre HTTP 200 con mensaje genérico, exista o no el email (anti-enumeración) |
 
+### Grupo: `POST /api/v1/auth/forgot-password` (Fase 1 auth)
+
+A diferencia de `resend-verification`, aquí sí se distingue si el email existe (404 si no).
+
+| Método de test | Descripción |
+|---|---|
+| `forgotPassword_conEmailRegistrado_devuelve200ConMensaje` | Email registrado → HTTP 200 con mensaje de confirmación |
+| `forgotPassword_conEmailNoRegistrado_devuelve404` | `AuthService` lanza `NOT_FOUND` → HTTP 404 con `error.code` |
+| `forgotPassword_conEmailInvalido_devuelve400` | Email con formato inválido → HTTP 400 (Bean Validation `@Email`) |
+
+### Grupo: `POST /api/v1/auth/reset-password` (Fase 1 auth)
+
+| Método de test | Descripción |
+|---|---|
+| `resetPassword_conTokenValido_devuelve200` | Token válido → HTTP 200 |
+| `resetPassword_conTokenInvalido_devuelve400` | Token inválido/expirado → HTTP 400 con `error.code=INVALID_TOKEN` |
+| `resetPassword_conPasswordDebil_devuelve400` | `AuthService` lanza `WEAK_PASSWORD` → HTTP 400 con `error.code` |
+
 ### Grupo: `POST /api/v1/auth/logout`
 
 | Método de test | Descripción |
@@ -188,7 +238,7 @@ Desde Fase 1, el registro ya no autentica (no devuelve token; el usuario debe ve
 ./mvnw test
 
 # Solo los tests de servicios
-./mvnw test -Dtest="HashServiceTest,JwtServiceTest,AuthServiceTest,PasswordPolicyServiceTest,EmailVerificationServiceTest"
+./mvnw test -Dtest="HashServiceTest,JwtServiceTest,AuthServiceTest,PasswordPolicyServiceTest,EmailVerificationServiceTest,PasswordResetServiceTest"
 
 # Solo los tests de controladores
 ./mvnw test -Dtest="AuthControllerTest"

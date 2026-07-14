@@ -23,4 +23,7 @@ mapit:
     # solo UX, este es el que realmente evita abuso)
     resend-cooldown-seconds: 60
     verification-ttl-minutes: 20
+    # TTL corto para el token de "olvidé mi contraseña" (más corto que verificación: el email
+    # llega en segundos y el usuario suele abrirlo de inmediato)
+    reset-ttl-minutes: 15
 

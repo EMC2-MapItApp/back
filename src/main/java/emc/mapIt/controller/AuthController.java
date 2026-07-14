@@ -3,10 +3,13 @@ package emc.mapIt.controller;
 import emc.mapIt.dto.AuthLoginRequest;
 import emc.mapIt.dto.AuthRegisterRequest;
 import emc.mapIt.dto.AuthResponse;
+import emc.mapIt.dto.ForgotPasswordRequest;
+import emc.mapIt.dto.ForgotPasswordResponse;
 import emc.mapIt.dto.MapItUserResponse;
 import emc.mapIt.dto.RegisterResponse;
 import emc.mapIt.dto.ResendVerificationRequest;
 import emc.mapIt.dto.ResendVerificationResponse;
+import emc.mapIt.dto.ResetPasswordRequest;
 import emc.mapIt.dto.VerifyEmailRequest;
 import emc.mapIt.service.AuthService;
 import emc.mapIt.service.UserService;
@@ -34,6 +37,8 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li><code>POST /api/v1/auth/register</code>: registro de usuario (no autentica, ver verify-email)</li>
  *   <li><code>POST /api/v1/auth/verify-email</code>: confirma el email con el token recibido por correo</li>
  *   <li><code>POST /api/v1/auth/resend-verification</code>: reenvia el correo de verificacion</li>
+ *   <li><code>POST /api/v1/auth/forgot-password</code>: solicita el restablecimiento de contraseña</li>
+ *   <li><code>POST /api/v1/auth/reset-password</code>: fija una contraseña nueva con el token recibido por correo</li>
  *   <li><code>POST /api/v1/auth/login</code>: autenticación por email/password (requiere email verificado)</li>
  *   <li><code>GET /api/v1/auth/me</code>: perfil del usuario autenticado</li>
  *   <li><code>POST /api/v1/auth/logout</code>: cierre de sesión lógico (stateless)</li>
@@ -113,6 +118,37 @@ public class AuthController {
         log.debug("Reenvio de verificacion solicitado");
         authService.resendVerification(request.email());
         return new ResendVerificationResponse("Si el correo existe y no esta verificado, se ha reenviado un enlace.");
+    }
+
+    /**
+     * Solicita el restablecimiento de contraseña ("olvidé mi contraseña"). A diferencia de
+     * {@code resend-verification}, aquí sí se distingue si el email existe (decisión de
+     * producto: el registro ya lo revela vía 409 CONFLICT, así que no hay anti-enumeración
+     * real que proteger).
+     *
+     * @param request email de la cuenta a restablecer
+     * @return mensaje de confirmación; {@link emc.mapIt.exception.GlobalExceptionHandler}
+     *         traduce a 404 si el email no existe
+     */
+    @PostMapping("/forgot-password")
+    public ForgotPasswordResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        log.info("Solicitud de restablecimiento de contraseña para email={}", request.email());
+        authService.forgotPassword(request.email());
+        return new ForgotPasswordResponse("Te hemos enviado un enlace para restablecer tu contraseña.");
+    }
+
+    /**
+     * Fija una contraseña nueva a partir del token recibido por correo.
+     *
+     * @param request token de restablecimiento y contraseña nueva
+     * @return 200 si el token era válido y la contraseña cumplía la política; el
+     *         {@link emc.mapIt.exception.GlobalExceptionHandler} traduce el error si no
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        log.debug("Restablecimiento de contraseña solicitado");
+        authService.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.ok().build();
     }
 
     /**

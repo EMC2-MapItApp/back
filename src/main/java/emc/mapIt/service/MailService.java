@@ -31,6 +31,7 @@ public class MailService {
 
     private static final Logger log = LoggerFactory.getLogger(MailService.class);
     private static final String TEMPLATE_PATH = "templates/email/verification-email.html";
+    private static final String RESET_TEMPLATE_PATH = "templates/email/password-reset-email.html";
 
     private final JavaMailSender mailSender;
     private final String fromAddress;
@@ -51,7 +52,7 @@ public class MailService {
      */
     public void sendVerificationEmail(String to, String userName, String rawToken) {
         String link = frontendBaseUrl + "/verify-email?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
-        String html = loadTemplate()
+        String html = loadTemplate(TEMPLATE_PATH)
                 .replace("{{name}}", userName)
                 .replace("{{link}}", link);
 
@@ -75,11 +76,39 @@ public class MailService {
         }
     }
 
-    private String loadTemplate() {
-        try (InputStream is = new ClassPathResource(TEMPLATE_PATH).getInputStream()) {
+    /**
+     * Envia el correo de restablecimiento de contraseña con el enlace que apunta a la pagina
+     * {@code /reset-password} del frontend con el token en claro como query param.
+     */
+    public void sendPasswordResetEmail(String to, String userName, String rawToken) {
+        String link = frontendBaseUrl + "/reset-password?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+        String html = loadTemplate(RESET_TEMPLATE_PATH)
+                .replace("{{name}}", userName)
+                .replace("{{link}}", link);
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            helper.setTo(to);
+            helper.setFrom(fromAddress);
+            helper.setSubject("Restablece tu contraseña en MapIt");
+            helper.setText(html, true);
+            mailSender.send(message);
+            log.info("Email de restablecimiento de contraseña enviado email={}", to);
+        } catch (MessagingException | MailException ex) {
+            log.error("Fallo enviando email de restablecimiento de contraseña email={}", to, ex);
+            throw new ApiException(
+                    "MAIL_SEND_FAILED",
+                    "No se pudo enviar el correo de restablecimiento de contraseña.",
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private String loadTemplate(String templatePath) {
+        try (InputStream is = new ClassPathResource(templatePath).getInputStream()) {
             return new String(is.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException ex) {
-            throw new IllegalStateException("No se pudo cargar la plantilla de email: " + TEMPLATE_PATH, ex);
+            throw new IllegalStateException("No se pudo cargar la plantilla de email: " + templatePath, ex);
         }
     }
 }

@@ -34,6 +34,7 @@ class AuthServiceTest {
     @Mock private UserWithProfileToMapItUserMapper userWithProfileToMapItUserMapper;
     @Mock private PasswordPolicyService passwordPolicyService;
     @Mock private EmailVerificationService emailVerificationService;
+    @Mock private PasswordResetService passwordResetService;
 
     private AuthService authService;
 
@@ -47,7 +48,7 @@ class AuthServiceTest {
         authService = new AuthService(
                 userService, passwordEncoder, jwtService,
                 authRegisterToUserMapper, userWithProfileToMapItUserMapper,
-                passwordPolicyService, emailVerificationService);
+                passwordPolicyService, emailVerificationService, passwordResetService);
 
         userGuardado = new User();
         userGuardado.setId("id-1");
@@ -176,5 +177,21 @@ class AuthServiceTest {
         AuthLoginRequest request = new AuthLoginRequest("", "pass1234");
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(ApiException.class);
+    }
+
+    // ── forgotPassword / resetPassword ─────────────────────────────
+
+    @Test
+    void forgotPassword_delegaEnPasswordResetService() {
+        authService.forgotPassword("ana@test.com");
+
+        verify(passwordResetService).requestReset("ana@test.com");
+    }
+
+    @Test
+    void resetPassword_delegaEnPasswordResetService() {
+        authService.resetPassword("token-en-claro", "nuevaPass1234");
+
+        verify(passwordResetService).resetPassword("token-en-claro", "nuevaPass1234");
     }
 }

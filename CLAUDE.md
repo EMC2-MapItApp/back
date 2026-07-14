@@ -34,7 +34,7 @@ despliegue "Angular" tradicional).
 ./mvnw test
 
 # Ejecutar clases de test específicas
-./mvnw test -Dtest="HashServiceTest,JwtServiceTest,AuthServiceTest"
+./mvnw test -Dtest="HashServiceTest,JwtServiceTest,AuthServiceTest,PasswordResetServiceTest"
 ./mvnw test -Dtest="AuthControllerTest"
 
 # Verificación completa (lo que corre CI antes de construir el artefacto de deploy)
@@ -77,9 +77,16 @@ cada request por `JwtAuthFilter` (un `OncePerRequestFilter` que lee la cabecera
 `SecurityConfig` decidan el acceso — no rechaza por sí mismo tokens ausentes/inválidos en rutas
 públicas). Las rutas públicas vs. protegidas se declaran en `SecurityConfig`
 (`GET /api/v1/categories/**`, `GET /api/v1/publications`, `GET /api/v1/users/**`,
-`GET /api/v1/geo/**`, y register/login/logout de auth son abiertas; el resto requiere token
-válido). CSRF está deshabilitado y las sesiones son stateless — es una API de tokens pura, sin
-cookies.
+`GET /api/v1/geo/**`, y register/login/logout/verify-email/resend-verification/
+forgot-password/reset-password de auth son abiertas; el resto requiere token válido). CSRF
+está deshabilitado y las sesiones son stateless — es una API de tokens pura, sin cookies.
+
+El restablecimiento de contraseña ("olvidé mi contraseña") sigue el mismo patrón que la
+verificación de email: `PasswordResetToken` es una colección hermana de
+`EmailVerificationToken` (token de un solo uso, hash SHA-256, TTL vía índice Mongo), gestionada
+por `PasswordResetService`. A diferencia de `resend-verification`, `forgot-password` sí revela
+si el email existe (404 si no) — decisión de producto deliberada, ya que `register` ya lo revela
+vía 409 CONFLICT y no hay anti-enumeración real que proteger aquí.
 
 **Seeders** (`config/*Seeder.java`, p.ej. `AdminUserSeeder`, `CategorySeeder`) pueblan datos de
 referencia (categorías, un usuario admin) al arrancar — revísalos antes de asumir que un MongoDB

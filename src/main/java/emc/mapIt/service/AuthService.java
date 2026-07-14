@@ -30,6 +30,7 @@ public class AuthService {
     private final UserWithProfileToMapItUserMapper userWithProfileToMapItUserMapper;
     private final PasswordPolicyService passwordPolicyService;
     private final EmailVerificationService emailVerificationService;
+    private final PasswordResetService passwordResetService;
 
     public AuthService(
             UserService userService,
@@ -38,7 +39,8 @@ public class AuthService {
             AuthRegisterToUserMapper authRegisterToUserMapper,
             UserWithProfileToMapItUserMapper userWithProfileToMapItUserMapper,
             PasswordPolicyService passwordPolicyService,
-            EmailVerificationService emailVerificationService
+            EmailVerificationService emailVerificationService,
+            PasswordResetService passwordResetService
     ) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
@@ -47,6 +49,7 @@ public class AuthService {
         this.userWithProfileToMapItUserMapper = userWithProfileToMapItUserMapper;
         this.passwordPolicyService = passwordPolicyService;
         this.emailVerificationService = emailVerificationService;
+        this.passwordResetService = passwordResetService;
     }
 
     /**
@@ -119,6 +122,16 @@ public class AuthService {
     /** Delega en {@link EmailVerificationService}; AuthController mantiene una unica fachada de auth. */
     public void resendVerification(String email) {
         emailVerificationService.resend(email);
+    }
+
+    /** Delega en {@link PasswordResetService}; AuthController mantiene una unica fachada de auth. */
+    public void forgotPassword(String email) {
+        passwordResetService.requestReset(email);
+    }
+
+    /** Delega en {@link PasswordResetService}; AuthController mantiene una unica fachada de auth. */
+    public void resetPassword(String token, String newPassword) {
+        passwordResetService.resetPassword(token, newPassword);
     }
 
     public String requireUserId(String authHeader) {

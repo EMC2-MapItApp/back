@@ -25,3 +25,4 @@ mapit:
     frontend-base-url: http://localhost:4200
     resend-cooldown-seconds: 60
     verification-ttl-minutes: 20
+    reset-ttl-minutes: 15

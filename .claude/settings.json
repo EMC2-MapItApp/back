@@ -29,7 +29,15 @@
       "Bash(command -v gcloud)",
       "Bash(gcloud config *)",
       "Bash(npm run *)",
-      "Bash(grep -v \"^\\\\.git$\\\\|^target$\\\\|^\\\\.mvn$\")"
+      "Bash(grep -v \"^\\\\.git$\\\\|^target$\\\\|^\\\\.mvn$\")",
+      "Bash(./mvnw -q compile)",
+      "Bash(./mvnw -q test-compile)",
+      "Bash(./mvnw -q test -Dtest=\"PasswordResetServiceTest,AuthServiceTest,AuthControllerTest,EmailVerificationServiceTest\")",
+      "Bash(java -version)",
+      "Bash(./mvnw -v)",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot\")",
+      "Bash(./mvnw -q clean verify)",
+      "Bash(./mvnw clean *)"
     ]
   }
 }
