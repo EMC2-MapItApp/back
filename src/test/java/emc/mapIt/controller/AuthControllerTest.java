@@ -130,15 +130,28 @@ class AuthControllerTest {
     }
 
     @Test
-    void login_conEmailInvalido_devuelve400() throws Exception {
+    void login_conIdentifierBlanco_devuelve400() throws Exception {
         String bodyInvalido = """
-                {"email":"no-es-email","password":"pass1234"}
+                {"identifier":"","password":"pass1234"}
                 """;
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bodyInvalido))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void login_conNick_devuelve200ConToken() throws Exception {
+        when(authService.login(any())).thenReturn(AUTH_RESPONSE);
+
+        AuthLoginRequest body = new AuthLoginRequest("@ana", "pass1234");
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("jwt-token"));
     }
 
     @Test

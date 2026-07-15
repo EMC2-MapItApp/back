@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li><code>POST /api/v1/auth/resend-verification</code>: reenvia el correo de verificacion</li>
  *   <li><code>POST /api/v1/auth/forgot-password</code>: solicita el restablecimiento de contraseña</li>
  *   <li><code>POST /api/v1/auth/reset-password</code>: fija una contraseña nueva con el token recibido por correo</li>
- *   <li><code>POST /api/v1/auth/login</code>: autenticación por email/password (requiere email verificado)</li>
+ *   <li><code>POST /api/v1/auth/login</code>: autenticación por email o @nick + password (requiere email verificado)</li>
  *   <li><code>GET /api/v1/auth/me</code>: perfil del usuario autenticado</li>
  *   <li><code>POST /api/v1/auth/logout</code>: cierre de sesión lógico (stateless)</li>
  * </ul>
@@ -152,7 +152,7 @@ public class AuthController {
     }
 
     /**
-     * Autentica un usuario existente por email y contraseña.
+     * Autentica un usuario existente por email o {@code @nick} y contraseña.
      *
      * @param request credenciales de acceso validadas
      * @return {@link AuthResponse} con token JWT y datos del usuario autenticado
@@ -161,7 +161,7 @@ public class AuthController {
      */
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody AuthLoginRequest request) {
-        log.info("Login solicitado para email={}", request.email());
+        log.info("Login solicitado para identifier={}", request.identifier());
         return authService.login(request);
     }
 

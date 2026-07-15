@@ -17,11 +17,16 @@ import emc.mapIt.mapper.AuthRegisterToUserMapper;
 import emc.mapIt.mapper.UserWithProfileToMapItUserMapper;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Service
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+
+    /** Mismo patrón que {@link emc.mapIt.dto.AuthRegisterRequest#email()}. */
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
@@ -82,19 +87,19 @@ public class AuthService {
     }
 
     public AuthResponse login(AuthLoginRequest request) {
-        log.info("Inicio login auth para email={}", request != null ? request.email() : null);
+        log.info("Inicio login auth para identifier={}", request != null ? request.identifier() : null);
 
         if (request == null) {
             throw new ApiException("BAD_REQUEST", "Request de login requerida", HttpStatus.BAD_REQUEST);
         }
-        if (isBlank(request.email()) || isBlank(request.password())) {
+        if (isBlank(request.identifier()) || isBlank(request.password())) {
             throw new ApiException("BAD_REQUEST", "Credenciales invalidas", HttpStatus.BAD_REQUEST);
         }
 
-        MapItUser user = userService.getByEmailOrThrow(request.email());
+        MapItUser user = resolveUserByIdentifier(request.identifier().trim());
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            log.warn("Intento de login fallido para email={}", request.email());
+            log.warn("Intento de login fallido para identifier={}", request.identifier());
             throw new ApiException("UNAUTHORIZED", "Credenciales invalidas", HttpStatus.UNAUTHORIZED);
         }
 
@@ -136,6 +141,29 @@ public class AuthService {
 
     public String requireUserId(String authHeader) {
         return jwtService.extractUserId(authHeader);
+    }
+
+    /**
+     * Resuelve el usuario a partir del identificador de login: un nick prefijado con
+     * {@code @} (p.ej. {@code @ana}) o un email. Mismo regex que {@link emc.mapIt.dto.AuthRegisterRequest}
+     * para que "qué cuenta como email" sea consistente entre registro y login.
+     */
+    private MapItUser resolveUserByIdentifier(String identifier) {
+        if (identifier.startsWith("@")) {
+            String nick = identifier.substring(1);
+            if (isBlank(nick)) {
+                throw new ApiException("BAD_REQUEST", "Credenciales invalidas", HttpStatus.BAD_REQUEST);
+            }
+            return userService.getByNickOrThrow(nick);
+        }
+        if (isEmailFormat(identifier)) {
+            return userService.getByEmailOrThrow(identifier);
+        }
+        throw new ApiException("BAD_REQUEST", "Credenciales invalidas", HttpStatus.BAD_REQUEST);
+    }
+
+    private boolean isEmailFormat(String value) {
+        return EMAIL_PATTERN.matcher(value).matches();
     }
 
     private boolean isBlank(String value) {

@@ -86,11 +86,14 @@ Dependencias mockeadas:
 
 | Método de test | Descripción |
 |---|---|
-| `login_conUsuarioVerificado_devuelveAuthResponse` | Happy path: credenciales correctas + email verificado devuelven `AuthResponse` con token |
+| `login_conUsuarioVerificado_devuelveAuthResponse` | Happy path con email: credenciales correctas + email verificado devuelven `AuthResponse` con token |
 | `login_conUsuarioNoVerificado_lanzaApiExceptionForbidden` | Email sin verificar lanza `ApiException` (`EMAIL_NOT_VERIFIED`, 403), tras validar la password |
 | `login_conPasswordIncorrecta_lanzaApiException` | Password incorrecta lanza `ApiException` con mensaje `"invalidas"` |
 | `login_conRequestNull_lanzaApiException` | Request `null` lanza `ApiException` |
-| `login_conEmailBlanco_lanzaApiException` | Email vacío lanza `ApiException` |
+| `login_conEmailBlanco_lanzaApiException` | Identifier vacío lanza `ApiException` |
+| `login_conNickValido_devuelveAuthResponse` | `identifier` con prefijo `@` (p.ej. `@ana`) resuelve por nick vía `UserService.getByNickOrThrow`, sin tocar `getByEmailOrThrow` |
+| `login_conNickInexistente_lanzaApiException` | `@nick` inexistente lanza `ApiException` (`UNAUTHORIZED`) — mismo mensaje genérico que password incorrecta |
+| `login_conIdentifierSinFormatoValido_lanzaApiExceptionSinConsultarUsuario` | `identifier` que no es ni `@nick` ni email → `ApiException` (`BAD_REQUEST`) sin consultar `UserService` |
 
 ### Grupo: `forgotPassword` / `resetPassword` (Fase 1 auth)
 
@@ -188,8 +191,9 @@ Desde Fase 1, el registro ya no autentica (no devuelve token; el usuario debe ve
 
 | Método de test | Descripción |
 |---|---|
-| `login_conCredencialesValidas_devuelve200ConToken` | Credenciales válidas → HTTP 200, body JSON con `token` |
-| `login_conEmailInvalido_devuelve400` | Email con formato inválido → HTTP 400 (Bean Validation `@Email`) |
+| `login_conCredencialesValidas_devuelve200ConToken` | Credenciales válidas (`identifier` con formato email) → HTTP 200, body JSON con `token` |
+| `login_conIdentifierBlanco_devuelve400` | `identifier` vacío → HTTP 400 (Bean Validation `@NotBlank`; el formato email/nick ya no se valida en el DTO) |
+| `login_conNick_devuelve200ConToken` | `identifier` con prefijo `@` (nick) → HTTP 200, body JSON con `token` (smoke test; la lógica de resolución vive en `AuthServiceTest`) |
 | `login_conUsuarioNoVerificado_devuelve403` | `AuthService` lanza `EMAIL_NOT_VERIFIED` → HTTP 403 con `error.code` |
 
 ### Grupo: `POST /api/v1/auth/verify-email` (Fase 1 auth)

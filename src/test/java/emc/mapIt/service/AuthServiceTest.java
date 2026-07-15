@@ -179,6 +179,45 @@ class AuthServiceTest {
                 .isInstanceOf(ApiException.class);
     }
 
+    @Test
+    void login_conNickValido_devuelveAuthResponse() {
+        AuthLoginRequest request = new AuthLoginRequest("@ana", "pass1234");
+
+        when(userService.getByNickOrThrow("ana")).thenReturn(mapItUser);
+        when(passwordEncoder.matches("pass1234", "hash")).thenReturn(true);
+        when(jwtService.generateToken("id-1")).thenReturn("jwt-token");
+        when(userService.toResponse(mapItUser)).thenReturn(userResponse);
+
+        AuthResponse response = authService.login(request);
+
+        assertThat(response.token()).isEqualTo("jwt-token");
+        verify(userService, never()).getByEmailOrThrow(any());
+    }
+
+    @Test
+    void login_conNickInexistente_lanzaApiException() {
+        AuthLoginRequest request = new AuthLoginRequest("@noexiste", "pass1234");
+
+        when(userService.getByNickOrThrow("noexiste")).thenThrow(
+                new ApiException("UNAUTHORIZED", "Credenciales invalidas", org.springframework.http.HttpStatus.UNAUTHORIZED));
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("invalidas");
+    }
+
+    @Test
+    void login_conIdentifierSinFormatoValido_lanzaApiExceptionSinConsultarUsuario() {
+        AuthLoginRequest request = new AuthLoginRequest("no-es-nick-ni-email", "pass1234");
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("invalidas");
+
+        verify(userService, never()).getByEmailOrThrow(any());
+        verify(userService, never()).getByNickOrThrow(any());
+    }
+
     // ── forgotPassword / resetPassword ─────────────────────────────
 
     @Test

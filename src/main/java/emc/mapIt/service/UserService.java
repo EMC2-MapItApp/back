@@ -149,6 +149,25 @@ public class UserService {
     }
 
     /**
+     * Busca un usuario por nick normalizado para autenticación.
+     * <p>
+     * Devuelve UNAUTHORIZED si el nick no existe (mismo patrón anti-enumeración que
+     * {@link #getByEmailOrThrow(String)}: no se distingue de una password inválida).
+     * </p>
+     *
+     * @param nick nick a buscar (case-insensitive, sin el prefijo {@code @})
+     * @return usuario encontrado
+     * @throws ApiException con código UNAUTHORIZED si no existe
+     */
+    @Transactional(readOnly = true)
+    public MapItUser getByNickOrThrow(String nick) {
+        String normalizedNick = normalizeNick(nick);
+        User user = userRepository.findByNick(normalizedNick)
+                .orElseThrow(() -> new ApiException("UNAUTHORIZED", "Credenciales invalidas", HttpStatus.UNAUTHORIZED));
+        return convertToDomain(user);
+    }
+
+    /**
      * Busca un usuario por UUID.
      *
      * @param id identificador único del usuario
