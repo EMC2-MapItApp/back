@@ -32,13 +32,25 @@ build/
 ### VS Code ###
 .vscode/
 
+### Claude Code (config local con rutas de máquina) ###
+.claude/
+
 ### Environment ###
 .env
-.env.dev
-.env.prod
-.env.local
+.env.*
+!.env.example
 
-### github ###
-.github/
+### Logs y backups locales ###
+*.log
+*.backup
+.github/workflows/logs/
 
+### System files ###
+.DS_Store
+Thumbs.db
 
+### Notas de trabajo internas, no forman parte del repo público ###
+/docs/FALLOS.md
+/docs/IDEAS.md
+/BITACORA.md
+/scripts/

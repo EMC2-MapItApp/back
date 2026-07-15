@@ -15,7 +15,6 @@ punto de entrada estructurado al repositorio.
 - [docs/STACK.md](docs/STACK.md) — stack y servicios en detalle, con el porqué de cada elección.
 - [docs/tests.md](docs/tests.md) — cobertura de tests por clase.
 - [docs/GoogleCloudDeploy.md](docs/GoogleCloudDeploy.md) — pipeline CI/CD y configuración de Cloud Run.
-- [BITACORA.md](BITACORA.md) — problemas reales encontrados durante el desarrollo/despliegue y cómo se resolvieron.
 - [CLAUDE.md](CLAUDE.md) — contexto de arquitectura y convenciones de código.
 
 ## API
@@ -36,7 +35,7 @@ punto de entrada estructurado al repositorio.
 ## Notas para agentes
 
 - El diseño original contemplaba PostgreSQL/PostGIS y tres tipos de usuario completos; el código
-  migró a MongoDB pronto en el desarrollo (ver BITACORA.md). Confiar en el código
+  migró a MongoDB pronto en el desarrollo. Confiar en el código
   (`src/main/java/emc/mapIt/entity`) como fuente de verdad del modelo de dominio.
 - Solo el tipo de usuario `INDIVIDUAL` está implementado de verdad; niveles/XP/capacidades y los
   tipos profesional/entidad están en progreso.

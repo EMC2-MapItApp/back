@@ -1,7 +1,6 @@
 # Stack y servicios — Backend (MapIt API)
 
-> Documento vivo, igual que `CLAUDE.md`. Actualízalo cuando cambie una pieza real del stack, no lo
-> trates como un anuncio fijo. La contraparte de este documento en el frontend es
+> Documento vivo. Actualizado cada vez que cambie una pieza real del stack. La contraparte de este documento en el frontend es
 > [`WEB/docs/STACK.md`](https://github.com/EMC2-MapItApp/web/blob/main_web/docs/STACK.md); juntos
 > cubren el sistema completo. Este mismo contenido se reutiliza (resumido) en la página
 > [`/stack`](https://mapit-web.com/stack) del frontend.
@@ -34,7 +33,7 @@ Ver `pom.xml` para la lista completa de dependencias y los perfiles `dev`/`prod`
 
 El proyecto migró desde un diseño inicial en PostgreSQL/PostGIS — el requisito de geoconsultas
 complejas de PostGIS no llegó a ser necesario para el alcance actual, y Atlas simplificó el
-despliegue. Detalle de esa decisión en [BITACORA.md](../BITACORA.md).
+despliegue.
 
 ## Autenticación
 

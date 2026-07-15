@@ -47,8 +47,7 @@ así queda versionada y su historial se puede seguir con `git log` sobre ese arc
 | `MAPIT_ADMIN_PASSWORD` | `MAPIT_ADMIN_PASSWORD:latest` |
 
 Los tres `MAPIT_ADMIN_*` alimentan `AdminUserSeeder` (mapean por relaxed binding a
-`mapit.admin.email`/`nick`/`password`) — ver [BITACORA.md](../BITACORA.md) sobre por qué dejaron
-de estar hardcodeados. El seeder es idempotente: si el usuario admin ya existe con ese email, no
+`mapit.admin.email`/`nick`/`password`). El seeder es idempotente: si el usuario admin ya existe con ese email, no
 lo vuelve a crear ni le cambia la contraseña — para rotar la de una cuenta ya existente hay que
 hacerlo aparte (a mano en Mongo o vía un futuro endpoint de cambio de password), no solo
 actualizando el secreto.

@@ -227,6 +227,5 @@ src/main/java/emc/mapIt/
 - [docs/tests.md](docs/tests.md) — cobertura de tests por clase
 - [docs/GoogleCloudDeploy.md](docs/GoogleCloudDeploy.md) — pipeline y configuración de Cloud Run
 - [docs/DockerizacionBackend.md](docs/DockerizacionBackend.md) — dockerización paso a paso
-- [BITACORA.md](BITACORA.md) — problemas reales encontrados durante el desarrollo/despliegue y cómo se resolvieron
 - [CLAUDE.md](CLAUDE.md) — contexto de arquitectura para trabajar en el repo con Claude Code
 - [llms.txt](llms.txt) — punto de entrada estructurado para agentes/LLMs ([convención llms.txt](https://llmstxt.org/))

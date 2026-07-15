@@ -6,8 +6,7 @@ Este documento describe el Docker **real** del repo hoy: imagen runtime-only con
 de un WAR ya compilado, y un `docker-compose.dev.yml` que solo levanta MongoDB para desarrollo
 local (la app corre fuera de Docker, vía `./mvnw spring-boot:run` o desde el IDE). El pipeline de
 CI/CD que construye y despliega esta misma imagen a producción está documentado en
-[docs/GoogleCloudDeploy.md](GoogleCloudDeploy.md); problemas ya resueltos durante la dockerización
-están en [BITACORA.md](../BITACORA.md).
+[docs/GoogleCloudDeploy.md](GoogleCloudDeploy.md).
 
 ## `Dockerfile` — runtime-only
 
