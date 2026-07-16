@@ -60,7 +60,7 @@ Estructura por capas estándar bajo `src/main/java/emc/mapIt/`:
 
 - `controller/` — endpoints REST, `/api/v1/...` (finos; delegan en los servicios)
 - `service/` — lógica de negocio (`AuthService`, `UserService`, `PublicationService`,
-  `CategoryCrudService`, `GeoIpService`, `HashService`, `JwtService`)
+  `CategoryCrudService`, `HashService`, `JwtService`)
 - `repository/` — repositorios de Spring Data MongoDB, uno por entidad
 - `entity/` — documentos de MongoDB (`User`, `Place`, `Publication`, `MainCategory`,
   `SubCategory`, `CapabilityDefinition`, `LevelDefinition`, `MilestoneDefinition`, `LocationType`, etc.)
@@ -70,6 +70,16 @@ Estructura por capas estándar bajo `src/main/java/emc/mapIt/`:
 - `exception/` — `ApiException` (errores funcionales/de dominio) + `GlobalExceptionHandler`
   (`@RestControllerAdvice`) que traduce excepciones a un JSON de error consistente
   `{"error": {code, message, status}}`
+
+Dos módulos aparte, primer piloto de una organización por dominio en lugar de por capa técnica
+(ver `docs/ARQUITECTURA.md`), montados como arquitectura hexagonal (puertos y adaptadores):
+
+- `geo/` — `GeoIpController`, `GeoIpService` (caso de uso), puerto `GeoLocationProvider` y su
+  adaptador `IpApiGeoLocationProvider` (ip-api.com), modelo de dominio `GeoLocation`,
+  `GeoIpResponse` (DTO de API)
+- `notifications/` — puerto `NotificationSender` y su adaptador `EmailNotificationSender`
+  (SMTP vía `JavaMailSender`); lo consumen `EmailVerificationService` y `PasswordResetService`
+  desde `service/`, que no conocen el canal de entrega concreto
 
 **Auth**: JWT propio basado en HMAC (sin librería externa de JWT) vía `JwtService`, aplicado en
 cada request por `JwtAuthFilter` (un `OncePerRequestFilter` que lee la cabecera
@@ -115,3 +125,10 @@ controllers no deben construir respuestas de error manualmente.
   `application-dev.yaml` / `application-prod.yaml`). En dev es aceptable loguear con detalle para
   depurar; en producción **nunca** loguear datos sensibles (contraseñas, tokens JWT completos,
   emails/PII innecesarios) — usar el nivel adecuado y enmascarar/omitir esos campos.
+- **Documentación de stack/arquitectura sincronizada**: `docs/STACK.md` (este repo) tiene su
+  pareja en `../WEB/docs/STACK.md`, y ambos se resumen en
+  `../WEB/src/app/features/info/stack/stack-page.data.ts` (página pública `/stack`).
+  `docs/ARQUITECTURA.md` documenta las decisiones de arquitectura interna (monolito modular,
+  hexagonal en `geo/`/`notifications/`, criterios para pasar a microservicios). Al añadir,
+  cambiar o justificar una decisión de stack o arquitectura, actualizar los tres archivos (o los
+  que apliquen) en el mismo cambio — no dejarlos desincronizados.

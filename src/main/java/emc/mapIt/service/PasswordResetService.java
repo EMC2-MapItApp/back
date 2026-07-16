@@ -3,6 +3,7 @@ package emc.mapIt.service;
 import emc.mapIt.entity.PasswordResetToken;
 import emc.mapIt.entity.User;
 import emc.mapIt.exception.ApiException;
+import emc.mapIt.notifications.NotificationSender;
 import emc.mapIt.repository.PasswordResetTokenRepository;
 import emc.mapIt.repository.UserRepository;
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository tokenRepository;
     private final UserRepository userRepository;
     private final HashService hashService;
-    private final MailService mailService;
+    private final NotificationSender notificationSender;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
     private final int resetTtlMinutes;
@@ -50,7 +51,7 @@ public class PasswordResetService {
             PasswordResetTokenRepository tokenRepository,
             UserRepository userRepository,
             HashService hashService,
-            MailService mailService,
+            NotificationSender notificationSender,
             PasswordEncoder passwordEncoder,
             PasswordPolicyService passwordPolicyService,
             @Value("${mapit.mail.reset-ttl-minutes}") int resetTtlMinutes,
@@ -58,7 +59,7 @@ public class PasswordResetService {
         this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
         this.hashService = hashService;
-        this.mailService = mailService;
+        this.notificationSender = notificationSender;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
         this.resetTtlMinutes = resetTtlMinutes;
@@ -135,7 +136,7 @@ public class PasswordResetService {
         token.setExpiresAt(now.plus(resetTtlMinutes, ChronoUnit.MINUTES));
         tokenRepository.save(token);
 
-        mailService.sendPasswordResetEmail(user.getEmail(), user.getName(), rawToken);
+        notificationSender.sendPasswordResetEmail(user.getEmail(), user.getName(), rawToken);
         log.info("Token de reset de contraseña emitido userId={}", user.getId());
     }
 

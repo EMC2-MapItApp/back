@@ -1,7 +1,5 @@
-package emc.mapIt.controller;
+package emc.mapIt.geo;
 
-import emc.mapIt.dto.GeoIpResponse;
-import emc.mapIt.service.GeoIpService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +34,6 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * El endpoint es público: el mapa debe ser accesible antes del login.
  * </p>
- *
- * @author MapIt Development Team
- * @version 1.0.0
- * @since 2026-06-28
  *
  * @see GeoIpService
  * @see GeoIpResponse

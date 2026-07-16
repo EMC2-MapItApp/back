@@ -14,6 +14,17 @@ ejercicio de arquitectura sobre el papel. Cada elección de tecnología prioriza
 2. Estándar de la industria — lo que se usaría en un equipo profesional, no un atajo de juguete.
 3. Poco tiempo de mantenimiento operativo (managed services antes que self-hosting).
 
+## Organización del código
+
+Mismo criterio que el resto del stack aplicado a la arquitectura interna: estándar de la
+industria, sin sobre-ingeniería para el tamaño real del proyecto. Detalle completo, opciones
+consideradas y criterios objetivos de revisión en [`docs/ARQUITECTURA.md`](ARQUITECTURA.md).
+
+| Decisión | Por qué |
+|---|---|
+| Monolito modular por dominio (no microservicios) | Un único desarrollador y tráfico de proyecto personal sobre Cloud Run a coste ~0 — dividir en servicios ahora añadiría complejidad operativa (red, despliegues múltiples, consistencia eventual) sin ningún problema real que resolver. Los módulos se organizan por dominio de negocio (no por capa técnica) y cada uno es dueño exclusivo de sus colecciones Mongo, así que extraer uno como servicio el día que un criterio objetivo lo justifique es un cambio mecánico, no una reescritura. |
+| Arquitectura hexagonal (puertos y adaptadores) en `geo/` y `notifications/` | Piloto selectivo, no una regla global. Son los dos puntos del dominio con una dependencia externa reemplazable (proveedor GeoIP, canal de notificación) y, en `notifications/`, con más canales ya previstos (`IDEAS.md`: push, in-app). El caso de uso depende de una interfaz (puerto); el proveedor externo concreto vive en un adaptador aparte, sustituible sin tocar el caso de uso ni el controller. |
+
 ## Lenguaje y framework
 
 | Pieza | Versión | Por qué |
@@ -86,3 +97,10 @@ Desglose completo por clase de test: [`docs/tests.md`](tests.md).
   compensa aún la curva de aprendizaje/generación de código de MapStruct.
 - **Kubernetes**: Cloud Run cubre las necesidades de escalado de un proyecto de portfolio sin la
   sobrecarga operativa de gestionar un clúster.
+- **Microservicios desde el arranque**: mismo argumento que descartó Kubernetes, aplicado ahora
+  a la organización del propio backend — ver `docs/ARQUITECTURA.md` para los criterios objetivos
+  que sí lo justificarían más adelante.
+- **Arquitectura hexagonal en todo el dominio** (no solo `geo/`/`notifications/`): separar
+  modelo de dominio y documento Mongo con mappers para entidades de solo CRUD (categorías,
+  niveles, capacidades...) sería boilerplate sin ningún cambio de infraestructura previsto que
+  lo justifique.

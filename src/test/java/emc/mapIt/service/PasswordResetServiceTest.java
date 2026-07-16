@@ -3,6 +3,7 @@ package emc.mapIt.service;
 import emc.mapIt.entity.PasswordResetToken;
 import emc.mapIt.entity.User;
 import emc.mapIt.exception.ApiException;
+import emc.mapIt.notifications.NotificationSender;
 import emc.mapIt.repository.PasswordResetTokenRepository;
 import emc.mapIt.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +32,7 @@ class PasswordResetServiceTest {
     @Mock private PasswordResetTokenRepository tokenRepository;
     @Mock private UserRepository userRepository;
     @Mock private HashService hashService;
-    @Mock private MailService mailService;
+    @Mock private NotificationSender notificationSender;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private PasswordPolicyService passwordPolicyService;
 
@@ -42,7 +43,7 @@ class PasswordResetServiceTest {
     @BeforeEach
     void setUp() {
         passwordResetService = new PasswordResetService(
-                tokenRepository, userRepository, hashService, mailService,
+                tokenRepository, userRepository, hashService, notificationSender,
                 passwordEncoder, passwordPolicyService, TTL_MINUTES, COOLDOWN_SECONDS);
 
         usuario = new User();
@@ -70,7 +71,7 @@ class PasswordResetServiceTest {
         assertThat(guardado.getTokenHash()).isEqualTo("hash-del-token");
         assertThat(guardado.getConsumedAt()).isNull();
 
-        verify(mailService).sendPasswordResetEmail(eq("ana@test.com"), eq("Ana"), anyString());
+        verify(notificationSender).sendPasswordResetEmail(eq("ana@test.com"), eq("Ana"), anyString());
     }
 
     @Test
@@ -80,7 +81,7 @@ class PasswordResetServiceTest {
         assertThatThrownBy(() -> passwordResetService.requestReset("noexiste@test.com"))
                 .isInstanceOf(ApiException.class);
 
-        verify(mailService, never()).sendPasswordResetEmail(anyString(), anyString(), anyString());
+        verify(notificationSender, never()).sendPasswordResetEmail(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -93,7 +94,7 @@ class PasswordResetServiceTest {
 
         passwordResetService.requestReset("ana@test.com");
 
-        verify(mailService, never()).sendPasswordResetEmail(anyString(), anyString(), anyString());
+        verify(notificationSender, never()).sendPasswordResetEmail(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -107,7 +108,7 @@ class PasswordResetServiceTest {
 
         passwordResetService.requestReset("ana@test.com");
 
-        verify(mailService).sendPasswordResetEmail(eq("ana@test.com"), eq("Ana"), anyString());
+        verify(notificationSender).sendPasswordResetEmail(eq("ana@test.com"), eq("Ana"), anyString());
     }
 
     // ── resetPassword ────────────────────────────────────────────

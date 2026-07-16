@@ -3,6 +3,7 @@ package emc.mapIt.service;
 import emc.mapIt.entity.EmailVerificationToken;
 import emc.mapIt.entity.User;
 import emc.mapIt.exception.ApiException;
+import emc.mapIt.notifications.NotificationSender;
 import emc.mapIt.repository.EmailVerificationTokenRepository;
 import emc.mapIt.repository.UserRepository;
 import org.slf4j.Logger;
@@ -34,7 +35,7 @@ public class EmailVerificationService {
     private final EmailVerificationTokenRepository tokenRepository;
     private final UserRepository userRepository;
     private final HashService hashService;
-    private final MailService mailService;
+    private final NotificationSender notificationSender;
     private final int verificationTtlMinutes;
     private final int resendCooldownSeconds;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -43,13 +44,13 @@ public class EmailVerificationService {
             EmailVerificationTokenRepository tokenRepository,
             UserRepository userRepository,
             HashService hashService,
-            MailService mailService,
+            NotificationSender notificationSender,
             @Value("${mapit.mail.verification-ttl-minutes}") int verificationTtlMinutes,
             @Value("${mapit.mail.resend-cooldown-seconds}") int resendCooldownSeconds) {
         this.tokenRepository = tokenRepository;
         this.userRepository = userRepository;
         this.hashService = hashService;
-        this.mailService = mailService;
+        this.notificationSender = notificationSender;
         this.verificationTtlMinutes = verificationTtlMinutes;
         this.resendCooldownSeconds = resendCooldownSeconds;
     }
@@ -71,7 +72,7 @@ public class EmailVerificationService {
         token.setExpiresAt(now.plus(verificationTtlMinutes, ChronoUnit.MINUTES));
         tokenRepository.save(token);
 
-        mailService.sendVerificationEmail(user.getEmail(), user.getName(), rawToken);
+        notificationSender.sendVerificationEmail(user.getEmail(), user.getName(), rawToken);
         log.info("Token de verificacion emitido userId={}", user.getId());
     }
 

@@ -1,7 +1,9 @@
-package emc.mapIt.dto;
+package emc.mapIt.geo;
 
 /**
- * Resultado normalizado de geolocalización por IP.
+ * Resultado normalizado de geolocalización por IP, expuesto por la API. Se construye a partir
+ * del modelo de dominio {@link GeoLocation} más metadatos propios del caso de uso (IP resuelta,
+ * origen del dato) que el puerto {@link GeoLocationProvider} no conoce.
  *
  * @param lat        latitud en grados decimales
  * @param lng        longitud en grados decimales

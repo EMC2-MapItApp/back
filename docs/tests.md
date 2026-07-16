@@ -125,11 +125,11 @@ Verifica el rechazo de contraseñas débiles según puntuación zxcvbn (`com.nul
 **Tipo:** Unitario con Mockito.
 **Clase bajo test:** `emc.mapIt.service.EmailVerificationService`
 
-Dependencias mockeadas: `EmailVerificationTokenRepository`, `UserRepository`, `HashService`, `MailService`.
+Dependencias mockeadas: `EmailVerificationTokenRepository`, `UserRepository`, `HashService`, `NotificationSender`.
 
 | Método de test | Descripción |
 |---|---|
-| `issueAndSend_creaTokenYEnviaCorreo` | Genera token, lo guarda hasheado y llama a `MailService` |
+| `issueAndSend_creaTokenYEnviaCorreo` | Genera token, lo guarda hasheado y llama a `NotificationSender` |
 | `issueAndSend_invalidaTokenAnteriorAntesDeCrearUnoNuevo` | Borra cualquier token no consumido previo del usuario |
 | `verify_conTokenValido_marcaUsuarioVerificado` | Token válido marca `emailVerified=true` y consume el token |
 | `verify_conTokenExpirado_lanzaApiException` | Token expirado lanza `ApiException` (`INVALID_TOKEN`) |
@@ -147,11 +147,11 @@ Dependencias mockeadas: `EmailVerificationTokenRepository`, `UserRepository`, `H
 **Tipo:** Unitario con Mockito.
 **Clase bajo test:** `emc.mapIt.service.PasswordResetService`
 
-Dependencias mockeadas: `PasswordResetTokenRepository`, `UserRepository`, `HashService`, `MailService`, `PasswordEncoder`, `PasswordPolicyService`.
+Dependencias mockeadas: `PasswordResetTokenRepository`, `UserRepository`, `HashService`, `NotificationSender`, `PasswordEncoder`, `PasswordPolicyService`.
 
 | Método de test | Descripción |
 |---|---|
-| `requestReset_conEmailRegistrado_creaTokenYEnviaCorreo` | Genera token, lo guarda hasheado y llama a `MailService` |
+| `requestReset_conEmailRegistrado_creaTokenYEnviaCorreo` | Genera token, lo guarda hasheado y llama a `NotificationSender` |
 | `requestReset_conEmailNoRegistrado_lanzaApiExceptionNotFound` | Email no registrado lanza `ApiException` (`NOT_FOUND`) — a diferencia de `resend`, aquí sí se distingue |
 | `requestReset_dentroDeCooldown_noReenviaCorreo` | Solicitud reciente (dentro del cooldown server-side) no reenvía |
 | `requestReset_fueraDeCooldown_reenviaCorreo` | Fuera del cooldown, reemite y envía |

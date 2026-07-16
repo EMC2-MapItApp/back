@@ -3,6 +3,7 @@ package emc.mapIt.service;
 import emc.mapIt.entity.EmailVerificationToken;
 import emc.mapIt.entity.User;
 import emc.mapIt.exception.ApiException;
+import emc.mapIt.notifications.NotificationSender;
 import emc.mapIt.repository.EmailVerificationTokenRepository;
 import emc.mapIt.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +30,7 @@ class EmailVerificationServiceTest {
     @Mock private EmailVerificationTokenRepository tokenRepository;
     @Mock private UserRepository userRepository;
     @Mock private HashService hashService;
-    @Mock private MailService mailService;
+    @Mock private NotificationSender notificationSender;
 
     private EmailVerificationService emailVerificationService;
 
@@ -38,7 +39,7 @@ class EmailVerificationServiceTest {
     @BeforeEach
     void setUp() {
         emailVerificationService = new EmailVerificationService(
-                tokenRepository, userRepository, hashService, mailService,
+                tokenRepository, userRepository, hashService, notificationSender,
                 TTL_MINUTES, COOLDOWN_SECONDS);
 
         usuario = new User();
@@ -64,7 +65,7 @@ class EmailVerificationServiceTest {
         assertThat(guardado.getTokenHash()).isEqualTo("hash-del-token");
         assertThat(guardado.getConsumedAt()).isNull();
 
-        verify(mailService).sendVerificationEmail(eq("ana@test.com"), eq("Ana"), anyString());
+        verify(notificationSender).sendVerificationEmail(eq("ana@test.com"), eq("Ana"), anyString());
     }
 
     @Test
@@ -136,7 +137,7 @@ class EmailVerificationServiceTest {
 
         emailVerificationService.resend("noexiste@test.com");
 
-        verify(mailService, never()).sendVerificationEmail(anyString(), anyString(), anyString());
+        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -146,7 +147,7 @@ class EmailVerificationServiceTest {
 
         emailVerificationService.resend("ana@test.com");
 
-        verify(mailService, never()).sendVerificationEmail(anyString(), anyString(), anyString());
+        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -159,7 +160,7 @@ class EmailVerificationServiceTest {
 
         emailVerificationService.resend("ana@test.com");
 
-        verify(mailService, never()).sendVerificationEmail(anyString(), anyString(), anyString());
+        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -173,7 +174,7 @@ class EmailVerificationServiceTest {
 
         emailVerificationService.resend("ana@test.com");
 
-        verify(mailService).sendVerificationEmail(eq("ana@test.com"), eq("Ana"), anyString());
+        verify(notificationSender).sendVerificationEmail(eq("ana@test.com"), eq("Ana"), anyString());
     }
 
     private EmailVerificationToken tokenValido() {
