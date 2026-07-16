@@ -36,7 +36,8 @@ public class AuthRegisterToUserMapper {
         log.debug("Mapeando request de registro a entidad User para email={}", request.email());
         User user = new User();
         user.setName(request.name().trim());
-        user.setNick(request.nick().trim().toLowerCase());
+        // El nick es case-sensitive; solo se recortan espacios (el email sí se normaliza a minúsculas)
+        user.setNick(request.nick().trim());
         user.setEmail(request.email().trim().toLowerCase());
         user.setPasswordHash(hashService.sha256(request.password()));
         user.setUserType(request.userType());

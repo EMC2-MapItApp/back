@@ -155,7 +155,7 @@ public class UserService {
      * {@link #getByEmailOrThrow(String)}: no se distingue de una password inválida).
      * </p>
      *
-     * @param nick nick a buscar (case-insensitive, sin el prefijo {@code @})
+     * @param nick nick a buscar (case-sensitive, sin el prefijo {@code @})
      * @return usuario encontrado
      * @throws ApiException con código UNAUTHORIZED si no existe
      */
@@ -488,10 +488,11 @@ public class UserService {
     }
 
     /**
-     * Normaliza nick para consultas y persistencia (unicidad case-insensitive).
+     * Normaliza nick para consultas y persistencia. Solo trim: el nick es
+     * case-sensitive ({@code @mapituser} y {@code @mapitUser} son usuarios distintos).
      */
     private String normalizeNick(String nick) {
-        return nick == null ? "" : nick.trim().toLowerCase();
+        return nick == null ? "" : nick.trim();
     }
 
     /**
