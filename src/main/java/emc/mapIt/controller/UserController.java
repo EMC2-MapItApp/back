@@ -1,6 +1,7 @@
 package emc.mapIt.controller;
 
 import emc.mapIt.domain.MapItUser;
+import emc.mapIt.dto.ChangePasswordRequest;
 import emc.mapIt.dto.UserPatchRequest;
 import emc.mapIt.dto.MapItUserResponse;
 import emc.mapIt.dto.PublicationResponse;
@@ -446,6 +447,30 @@ public class UserController {
         }
 
         return currentFavorites;
+    }
+
+    /**
+     * Cambia la contraseña del usuario autenticado.
+     * <p>
+     * Requiere la contraseña actual para verificar la identidad antes de aplicar
+     * el cambio. La nueva contraseña se valida contra la política de contraseñas.
+     * </p>
+     *
+     * @param id            identificador del usuario
+     * @param request       {@link ChangePasswordRequest} con contraseña actual y nueva
+     * @param authorization header de autorización con token JWT
+     * @throws ApiException FORBIDDEN     si intenta modificar otro usuario
+     * @throws ApiException NOT_FOUND     si el usuario no existe
+     * @throws ApiException UNAUTHORIZED  si la contraseña actual no coincide
+     * @throws ApiException UNPROCESSABLE_ENTITY si la nueva contraseña no cumple la política
+     */
+    @PatchMapping("/{id}/password")
+    public void changePassword(@PathVariable String id,
+            @Valid @RequestBody ChangePasswordRequest request,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Cambio de contraseña para usuario id={}", id);
+        ensureSameUser(id, authorization);
+        userService.changePassword(id, request.currentPassword(), request.newPassword());
     }
 
     /**
