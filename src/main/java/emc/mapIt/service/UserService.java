@@ -13,6 +13,7 @@ import emc.mapIt.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,16 +47,23 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final LocationTypeRepository locationTypeRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicyService passwordPolicyService;
 
     /**
      * Constructor para inyección de dependencias.
      *
      * @param userRepository         repositorio de usuarios
      * @param locationTypeRepository repositorio de tipos de ubicación
+     * @param passwordEncoder        codificador de contraseñas BCrypt
+     * @param passwordPolicyService  validación de política de contraseñas
      */
-    public UserService(UserRepository userRepository, LocationTypeRepository locationTypeRepository) {
+    public UserService(UserRepository userRepository, LocationTypeRepository locationTypeRepository,
+            PasswordEncoder passwordEncoder, PasswordPolicyService passwordPolicyService) {
         this.userRepository = userRepository;
         this.locationTypeRepository = locationTypeRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.passwordPolicyService = passwordPolicyService;
     }
 
     /**
@@ -509,6 +517,44 @@ public class UserService {
             }
         }
         return result;
+    }
+
+    /**
+     * Cambia la contraseña de un usuario autenticado.
+     * <p>
+     * Verifica la contraseña actual antes de aplicar la nueva. La nueva contraseña
+     * se valida contra la política de contraseñas y se almacena con hash BCrypt.
+     * </p>
+     *
+     * @param id              id del usuario
+     * @param currentPassword contraseña actual en texto plano (para verificación)
+     * @param newPassword     nueva contraseña en texto plano
+     * @throws ApiException BAD_REQUEST   si algún argumento es nulo/vacío
+     * @throws ApiException NOT_FOUND     si el usuario no existe
+     * @throws ApiException UNAUTHORIZED  si la contraseña actual no coincide
+     * @throws ApiException UNPROCESSABLE_ENTITY si la nueva contraseña no cumple la política
+     */
+    public void changePassword(String id, String currentPassword, String newPassword) {
+        if (id == null || currentPassword == null || newPassword == null) {
+            throw new ApiException("BAD_REQUEST", "Datos de cambio de contraseña incompletos", HttpStatus.BAD_REQUEST);
+        }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new ApiException("UNAUTHORIZED", "La contraseña actual no es correcta", HttpStatus.UNAUTHORIZED);
+        }
+
+        passwordPolicyService.validate(newPassword, java.util.List.of(
+                user.getName() != null ? user.getName() : "",
+                user.getNick() != null ? user.getNick() : "",
+                user.getEmail() != null ? user.getEmail() : ""
+        ));
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Contraseña cambiada para usuario id={}", id);
     }
 
     /**

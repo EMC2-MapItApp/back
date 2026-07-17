@@ -20,6 +20,11 @@ objetivos para hacerlo el día que aplique.
 - Equipo: un desarrollador. Tráfico: el propio de un proyecto personal, sobre infraestructura
   serverless de coste ~0 (Cloud Run + MongoDB Atlas free tier).
 - Cliente actual: Angular. Cliente futuro: app nativa Android, que consumirá la misma API REST.
+  El uso real de la app es casi siempre desde **dispositivos móviles** (ver regla mobile-first en
+  `../../WEB/CLAUDE.md`, sección Arquitectura) — esto no cambia la arquitectura del backend hoy,
+  pero es un criterio a tener en cuenta al diseñar payloads y paginación (preferir respuestas
+  ligeras, evitar sobre-fetching) si en el futuro se detecta una necesidad real de optimizar para
+  redes móviles.
 - Estado actual del código (`emc.mapIt`): organización **por capa técnica**
   (`controller/`, `service/`, `repository/`, `entity/`, `dto/`, `mapper/`), sin separación por
   dominio. Funciona bien con el tamaño actual, pero `IDEAS.md` ya anticipa nuevos dominios
