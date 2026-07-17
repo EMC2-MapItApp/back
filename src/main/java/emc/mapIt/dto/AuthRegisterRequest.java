@@ -14,10 +14,14 @@ import jakarta.validation.constraints.Size;
  * subirlo no tendria sentido, BCrypt trunca en silencio a partir de ahi
  * (ver {@link emc.mapIt.service.PasswordPolicyService}, que lo rechaza explicitamente).
  * </p>
+ * <p>
+ * {@code nick} es opcional: si se omite, {@link emc.mapIt.service.AuthService} genera
+ * uno automaticamente a partir del nombre. El usuario puede cambiarlo desde su perfil.
+ * </p>
  */
 public record AuthRegisterRequest(
         @NotBlank @Size(max = 120) String name,
-        @NotBlank @Size(min = 3, max = 30) @Pattern(regexp = "^[A-Za-z0-9._-]+$") String nick,
+        @Size(min = 3, max = 30) @Pattern(regexp = "^[A-Za-z0-9._-]+$") String nick,
         @NotBlank @Email @Pattern(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$") String email,
         @NotBlank @Size(min = 8, max = 72) String password,
         @NotNull UserType userType

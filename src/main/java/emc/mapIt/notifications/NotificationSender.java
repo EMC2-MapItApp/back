@@ -17,9 +17,10 @@ public interface NotificationSender {
      *
      * @param to       destino del usuario en el canal actual (hoy: dirección de email)
      * @param userName nombre del usuario, para personalizar el mensaje
+     * @param nick     nick asignado (generado o elegido en el registro)
      * @param rawToken token de verificación en claro; el adaptador construye el enlace/acción
      */
-    void sendVerificationEmail(String to, String userName, String rawToken);
+    void sendVerificationEmail(String to, String userName, String nick, String rawToken);
 
     /**
      * Notifica al usuario con el enlace/acción para restablecer su contraseña.

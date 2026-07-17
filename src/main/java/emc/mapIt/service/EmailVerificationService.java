@@ -72,7 +72,7 @@ public class EmailVerificationService {
         token.setExpiresAt(now.plus(verificationTtlMinutes, ChronoUnit.MINUTES));
         tokenRepository.save(token);
 
-        notificationSender.sendVerificationEmail(user.getEmail(), user.getName(), rawToken);
+        notificationSender.sendVerificationEmail(user.getEmail(), user.getName(), user.getNick(), rawToken);
         log.info("Token de verificacion emitido userId={}", user.getId());
     }
 

@@ -53,10 +53,11 @@ public class EmailNotificationSender implements NotificationSender {
      * {@code /verify-email} del frontend con el token en claro como query param.
      */
     @Override
-    public void sendVerificationEmail(String to, String userName, String rawToken) {
+    public void sendVerificationEmail(String to, String userName, String nick, String rawToken) {
         String link = frontendBaseUrl + "/verify-email?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
         String html = loadTemplate(TEMPLATE_PATH)
                 .replace("{{name}}", userName)
+                .replace("{{nick}}", nick != null ? nick : "")
                 .replace("{{link}}", link);
 
         try {

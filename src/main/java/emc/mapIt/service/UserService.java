@@ -17,10 +17,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Servicio de aplicación para gestión de usuarios con persistencia JPA.
@@ -431,6 +434,49 @@ public class UserService {
                 : new ArrayList<>(domain.getFavoriteLocationTypeIds()));
 
         return user;
+    }
+
+    /**
+     * Genera un nick único derivado del nombre de display.
+     * <p>
+     * Normaliza el nombre (elimina diacríticos, conserva solo {@code [A-Za-z0-9._-]}),
+     * comprueba unicidad y, si hay colisión, añade un sufijo numérico aleatorio
+     * hasta 10 intentos. Como último recurso usa un sufijo UUID corto.
+     * </p>
+     *
+     * @param name nombre de display del que derivar el nick
+     * @return nick único y válido listo para persistir
+     */
+    public String generateUniqueNick(String name) {
+        String base = buildNickBase(name);
+        if (!userRepository.existsByNick(base)) return base;
+
+        for (int i = 0; i < 10; i++) {
+            int suffix = ThreadLocalRandom.current().nextInt(100, 1000);
+            String candidate = base + "_" + suffix;
+            if (!userRepository.existsByNick(candidate)) return candidate;
+        }
+
+        // Fallback improbable: sufijo UUID corto
+        return base + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 6);
+    }
+
+    private String buildNickBase(String name) {
+        if (name == null || name.isBlank()) return "user";
+
+        // Descomponer diacríticos (á→a, é→e, ñ→n, etc.) y eliminar las marcas combinadas
+        String normalized = Normalizer.normalize(name.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}", "");
+
+        String base = normalized.toLowerCase()
+                .replaceAll("[^A-Za-z0-9._-]", "_")
+                .replaceAll("_{2,}", "_")
+                .replaceAll("^_+|_+$", "");
+
+        if (base.length() < 3) base = (base + "user").substring(0, Math.min(base.length() + 4, 27));
+        if (base.length() > 27) base = base.substring(0, 27);
+
+        return base;
     }
 
     /**

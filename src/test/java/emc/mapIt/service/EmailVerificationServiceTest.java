@@ -45,6 +45,7 @@ class EmailVerificationServiceTest {
         usuario = new User();
         usuario.setId("id-1");
         usuario.setName("Ana");
+        usuario.setNick("ana");
         usuario.setEmail("ana@test.com");
         usuario.setEmailVerified(false);
     }
@@ -65,7 +66,7 @@ class EmailVerificationServiceTest {
         assertThat(guardado.getTokenHash()).isEqualTo("hash-del-token");
         assertThat(guardado.getConsumedAt()).isNull();
 
-        verify(notificationSender).sendVerificationEmail(eq("ana@test.com"), eq("Ana"), anyString());
+        verify(notificationSender).sendVerificationEmail(eq("ana@test.com"), eq("Ana"), eq("ana"), anyString());
     }
 
     @Test
@@ -137,7 +138,7 @@ class EmailVerificationServiceTest {
 
         emailVerificationService.resend("noexiste@test.com");
 
-        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString());
+        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -147,7 +148,7 @@ class EmailVerificationServiceTest {
 
         emailVerificationService.resend("ana@test.com");
 
-        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString());
+        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -160,11 +161,11 @@ class EmailVerificationServiceTest {
 
         emailVerificationService.resend("ana@test.com");
 
-        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString());
+        verify(notificationSender, never()).sendVerificationEmail(anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
-    void resend_fueraDeCooldown_reenviaCorreo() {
+    void resend_fueraDeCooldown_noReenviaCorreo_reenviaCorreo() {
         when(hashService.sha256(anyString())).thenReturn("hash-del-token");
         when(userRepository.findByEmail("ana@test.com")).thenReturn(Optional.of(usuario));
         EmailVerificationToken tokenAntiguo = tokenValido();
@@ -174,7 +175,7 @@ class EmailVerificationServiceTest {
 
         emailVerificationService.resend("ana@test.com");
 
-        verify(notificationSender).sendVerificationEmail(eq("ana@test.com"), eq("Ana"), anyString());
+        verify(notificationSender).sendVerificationEmail(eq("ana@test.com"), eq("Ana"), eq("ana"), anyString());
     }
 
     private EmailVerificationToken tokenValido() {

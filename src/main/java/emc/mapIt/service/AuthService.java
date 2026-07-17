@@ -68,14 +68,21 @@ public class AuthService {
         if (request == null) {
             throw new ApiException("BAD_REQUEST", "Request de registro requerida", HttpStatus.BAD_REQUEST);
         }
-        if (isBlank(request.name()) || isBlank(request.nick()) || isBlank(request.email())
+        if (isBlank(request.name()) || isBlank(request.email())
                 || isBlank(request.password()) || request.userType() == null) {
             throw new ApiException("BAD_REQUEST", "Datos de registro invalidos", HttpStatus.BAD_REQUEST);
         }
 
-        passwordPolicyService.validate(request.password(), List.of(request.name(), request.nick(), request.email()));
+        // Si el cliente no proporciona nick, se genera uno unico a partir del nombre.
+        // El usuario puede cambiarlo despues desde su perfil.
+        String resolvedNick = isBlank(request.nick())
+                ? userService.generateUniqueNick(request.name())
+                : request.nick().trim();
+
+        passwordPolicyService.validate(request.password(), List.of(request.name(), resolvedNick, request.email()));
 
         User candidate = authRegisterToUserMapper.toEntity(request);
+        candidate.setNick(resolvedNick); // sustituye el valor del mapper (puede ser null si no se envio)
         candidate.setPasswordHash(passwordEncoder.encode(request.password()));
 
         User savedUser = userService.create(candidate);
