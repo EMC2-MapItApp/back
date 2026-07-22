@@ -242,7 +242,7 @@ class GroupServiceTest {
             gi.setId("inv-1");
             return gi;
         });
-        when(groupMemberRepository.countByGroupId(GROUP_ID)).thenReturn(1L);
+        when(groupMemberRepository.findByGroupId(GROUP_ID)).thenReturn(List.of());
 
         GroupInvitationResponse response = groupService.inviteUser(ORGANIZER_ID, GROUP_ID, request);
 
@@ -308,7 +308,7 @@ class GroupServiceTest {
                 .thenReturn(List.of(invitation));
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
         when(userService.getByIdOrThrow(ORGANIZER_ID)).thenReturn(organizador);
-        when(groupMemberRepository.countByGroupId(GROUP_ID)).thenReturn(1L);
+        when(groupMemberRepository.findByGroupId(GROUP_ID)).thenReturn(List.of());
 
         List<GroupInvitationResponse> response = groupService.getPendingInvitations(MEMBER_ID);
 

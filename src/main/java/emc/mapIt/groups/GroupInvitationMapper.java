@@ -1,5 +1,7 @@
 package emc.mapIt.groups;
 
+import java.util.List;
+
 import org.springframework.stereotype.Component;
 
 /** Mapper de invitaciones: combina la entidad con datos ya resueltos del grupo y de quien invita. */
@@ -9,24 +11,25 @@ public class GroupInvitationMapper {
     /**
      * Convierte una invitación persistida a una vista serializable.
      *
-     * @param invitation       entidad persistida
-     * @param group            grupo asociado, ya resuelto
-     * @param invitedUserName  nombre del usuario invitado, ya resuelto
-     * @param invitedUserNick  nick del usuario invitado, ya resuelto
-     * @param invitedByName    nombre de quien envió la invitación, ya resuelto
-     * @param groupMemberCount número actual de miembros del grupo
+     * @param invitation      entidad persistida
+     * @param group           grupo asociado, ya resuelto
+     * @param invitedUserName nombre del usuario invitado, ya resuelto
+     * @param invitedUserNick nick del usuario invitado, ya resuelto
+     * @param invitedByName   nombre de quien envió la invitación, ya resuelto
+     * @param groupMembers    miembros actuales del grupo, ya resueltos
      * @return DTO de respuesta
      */
     public GroupInvitationResponse toResponse(GroupInvitation invitation, Group group,
             String invitedUserName, String invitedUserNick,
-            String invitedByName, long groupMemberCount) {
+            String invitedByName, List<GroupMemberResponse> groupMembers) {
         return new GroupInvitationResponse(
                 invitation.getId(),
                 invitation.getGroupId(),
                 group.getName(),
                 group.getDescription(),
                 group.getCategoryId(),
-                groupMemberCount,
+                groupMembers.size(),
+                groupMembers,
                 invitation.getInvitedUserId(),
                 invitedUserName,
                 invitedUserNick,

@@ -444,9 +444,7 @@ public class GroupService {
     }
 
     private GroupResponse buildGroupResponse(Group group) {
-        List<GroupMemberResponse> members = groupMemberRepository.findByGroupId(group.getId()).stream()
-                .map(member -> groupMapper.toMemberResponse(member, userService.getByIdOrThrow(member.getUserId())))
-                .toList();
+        List<GroupMemberResponse> members = resolveMembers(group.getId());
         List<GroupResponse.PendingInvitee> pendingInvitees =
                 groupInvitationRepository.findByGroupIdAndStatus(group.getId(), GroupInvitationStatus.PENDING)
                         .stream()
@@ -462,10 +460,15 @@ public class GroupService {
         Group group = getGroupOrThrow(invitation.getGroupId());
         MapItUser invitedUser = userService.getByIdOrThrow(invitation.getInvitedUserId());
         MapItUser invitedBy = userService.getByIdOrThrow(invitation.getInvitedByUserId());
-        long memberCount = groupMemberRepository.countByGroupId(group.getId());
         return groupInvitationMapper.toResponse(invitation, group,
                 invitedUser.getName(), invitedUser.getNick(),
-                invitedBy.getName(), memberCount);
+                invitedBy.getName(), resolveMembers(group.getId()));
+    }
+
+    private List<GroupMemberResponse> resolveMembers(String groupId) {
+        return groupMemberRepository.findByGroupId(groupId).stream()
+                .map(member -> groupMapper.toMemberResponse(member, userService.getByIdOrThrow(member.getUserId())))
+                .toList();
     }
 
     /**
