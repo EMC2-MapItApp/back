@@ -3,6 +3,7 @@ package emc.mapIt.service;
 import emc.mapIt.domain.MapItUser;
 import emc.mapIt.dto.MapItUserResponse;
 import emc.mapIt.dto.UserPatchRequest;
+import emc.mapIt.dto.UserSearchResultResponse;
 import emc.mapIt.entity.LocationType;
 import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserProfileDetails;
@@ -44,6 +45,9 @@ import java.util.Set;
 public class UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
+    /** Máximo de resultados devueltos por {@link #searchUsers(String, String)}. */
+    private static final int USER_SEARCH_LIMIT = 20;
 
     private final UserRepository userRepository;
     private final LocationTypeRepository locationTypeRepository;
@@ -96,7 +100,7 @@ public class UserService {
         if (candidate == null) {
             throw new ApiException("BAD_REQUEST", "El usuario es requerido", HttpStatus.BAD_REQUEST);
         }
-        if (isBlank(candidate.getName()) || isBlank(candidate.getNick()) || isBlank(candidate.getEmail())
+        if (isBlank(candidate.getName()) || isBlank(candidate.getEmail())
                 || isBlank(candidate.getPasswordHash()) || candidate.getUserType() == null) {
             throw new ApiException("BAD_REQUEST", "Datos incompletos para crear usuario", HttpStatus.BAD_REQUEST);
         }
@@ -106,9 +110,14 @@ public class UserService {
             throw new ApiException("CONFLICT", "Ya existe un usuario con ese email", HttpStatus.CONFLICT);
         }
 
-        String normalizedNick = normalizeNick(candidate.getNick());
-        if (userRepository.existsByNick(normalizedNick)) {
-            throw new ApiException("CONFLICT", "Ya existe un usuario con ese nick", HttpStatus.CONFLICT);
+        String normalizedNick;
+        if (isBlank(candidate.getNick())) {
+            normalizedNick = generateUniqueNick(candidate.getName(), normalizedEmail);
+        } else {
+            normalizedNick = normalizeNick(candidate.getNick());
+            if (userRepository.existsByNick(normalizedNick)) {
+                throw new ApiException("CONFLICT", "Ya existe un usuario con ese nick", HttpStatus.CONFLICT);
+            }
         }
 
         // Asegurar normalización consistente antes de persistir
@@ -190,6 +199,34 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
         return convertToDomain(user);
+    }
+
+    /**
+     * Busca usuarios por coincidencia parcial de nick o email (buscador de invitación a
+     * grupos). Excluye al propio usuario que busca y limita el resultado para no exponer el
+     * listado completo con una query corta.
+     *
+     * @param query           texto de búsqueda; menos de 2 caracteres devuelve lista vacía
+     * @param excludingUserId id del usuario autenticado, excluido de los resultados
+     * @return coincidencias, máximo {@value #USER_SEARCH_LIMIT}
+     */
+    @Transactional(readOnly = true)
+    public List<UserSearchResultResponse> searchUsers(String query, String excludingUserId) {
+        if (query == null || query.trim().length() < 2) {
+            return List.of();
+        }
+
+        String trimmed = query.trim();
+        return userRepository.findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(trimmed, trimmed).stream()
+                .filter(user -> !user.getId().equals(excludingUserId))
+                .limit(USER_SEARCH_LIMIT)
+                .map(user -> new UserSearchResultResponse(
+                        user.getId(),
+                        user.getName(),
+                        user.getNick(),
+                        user.getEmail(),
+                        user.getProfileDetails() != null ? user.getProfileDetails().getAvatarUrl() : null))
+                .toList();
     }
 
     /**
@@ -501,6 +538,51 @@ public class UserService {
      */
     private String normalizeNick(String nick) {
         return nick == null ? "" : nick.trim();
+    }
+
+    /**
+     * Genera un nick único para un usuario que no lo especificó en el registro.
+     * <p>
+     * Parte del nombre (o, si no aporta caracteres válidos, de la parte local del email),
+     * lo reduce al alfabeto permitido por {@link emc.mapIt.dto.AuthRegisterRequest#nick()}
+     * y añade un sufijo numérico incremental hasta encontrar uno libre.
+     * </p>
+     */
+    private String generateUniqueNick(String name, String email) {
+        String base = slugifyForNick(name);
+        if (base.length() < 3) {
+            String localPart = email != null && email.contains("@") ? email.substring(0, email.indexOf('@')) : "";
+            base = slugifyForNick(localPart);
+        }
+        if (base.length() < 3) {
+            base = "user";
+        }
+        if (base.length() > 24) {
+            base = base.substring(0, 24);
+        }
+
+        String candidate = base;
+        int suffix = 0;
+        while (userRepository.existsByNick(candidate)) {
+            suffix++;
+            String suffixStr = String.valueOf(suffix);
+            String truncatedBase = base.substring(0, Math.min(base.length(), 30 - suffixStr.length()));
+            candidate = truncatedBase + suffixStr;
+        }
+        return candidate;
+    }
+
+    /**
+     * Reduce un texto libre al alfabeto permitido en el nick ({@code [A-Za-z0-9._-]}),
+     * quitando acentos y cualquier otro carácter no soportado.
+     */
+    private String slugifyForNick(String input) {
+        if (input == null) {
+            return "";
+        }
+        String withoutAccents = java.text.Normalizer.normalize(input, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return withoutAccents.toLowerCase().replaceAll("[^a-z0-9._-]", "");
     }
 
     /**

@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -41,6 +42,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -68,6 +70,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/publications").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/publications/{id}").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/publications/author/{authorId}").permitAll()
+
+                // Búsqueda de usuarios (invitación a grupos) - requiere sesión; declarada ANTES
+                // del permitAll de /api/v1/users/** de abajo porque en authorizeHttpRequests
+                // gana la primera regla que matchea.
+                .requestMatchers(HttpMethod.GET, "/api/v1/users/search").authenticated()
 
                 // Perfiles de usuario - lectura pública
                 .requestMatchers(HttpMethod.GET, "/api/v1/users/**").permitAll()

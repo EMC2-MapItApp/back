@@ -31,7 +31,7 @@ public class AdminUserSeeder implements CommandLineRunner {
     public AdminUserSeeder(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${mapit.admin.email:admin@mapit.local}") String adminEmail,
+            @Value("${mapit.admin.email:admin@mapit-web.com}") String adminEmail,
             @Value("${mapit.admin.nick:admin}") String adminNick,
             @Value("${mapit.admin.password:admin-dev-ONLY-FOR-LOCAL}") String adminPassword) {
         this.userRepository = userRepository;

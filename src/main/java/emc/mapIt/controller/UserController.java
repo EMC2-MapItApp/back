@@ -5,6 +5,7 @@ import emc.mapIt.dto.ChangePasswordRequest;
 import emc.mapIt.dto.UserPatchRequest;
 import emc.mapIt.dto.MapItUserResponse;
 import emc.mapIt.dto.PublicationResponse;
+import emc.mapIt.dto.UserSearchResultResponse;
 import emc.mapIt.exception.ApiException;
 import emc.mapIt.service.AuthService;
 import emc.mapIt.service.PublicationService;
@@ -68,6 +69,27 @@ public class UserController {
         this.userService = userService;
         this.authService = authService;
         this.publicationService = publicationService;
+    }
+
+    /**
+     * Busca usuarios por coincidencia parcial de nick o email.
+     * <p>
+     * Usado por el buscador de invitación a grupos. Requiere sesión (a diferencia del resto de
+     * lecturas de este controller, que son públicas) — devolver nick/email de otros usuarios no
+     * debe quedar accesible sin autenticar. Excluye al propio usuario autenticado del resultado.
+     * </p>
+     *
+     * @param query         texto de búsqueda (nick o email); menos de 2 caracteres devuelve
+     *                      lista vacía
+     * @param authorization header de autorización con token JWT
+     * @return usuarios que coinciden, máximo 20
+     */
+    @GetMapping("/search")
+    public List<UserSearchResultResponse> search(@RequestParam(name = "q", defaultValue = "") String query,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        String requesterId = authService.requireUserId(authorization);
+        log.debug("Búsqueda de usuarios query={} requesterId={}", query, requesterId);
+        return userService.searchUsers(query, requesterId);
     }
 
     /**
