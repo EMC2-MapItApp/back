@@ -308,6 +308,7 @@ class GroupServiceTest {
                 .thenReturn(List.of(invitation));
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
         when(userService.getByIdOrThrow(ORGANIZER_ID)).thenReturn(organizador);
+        when(userService.getByIdOrThrow(MEMBER_ID)).thenReturn(miembro);
         when(groupMemberRepository.findByGroupId(GROUP_ID)).thenReturn(List.of());
 
         List<GroupInvitationResponse> response = groupService.getPendingInvitations(MEMBER_ID);
