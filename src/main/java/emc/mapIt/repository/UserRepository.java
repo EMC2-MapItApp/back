@@ -35,6 +35,9 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     List<User> findByNameContainingIgnoreCase(String name);
 
+    /** Usado por el buscador de invitación a grupos: coincidencia parcial por nick o email. */
+    List<User> findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(String nick, String email);
+
     List<User> findByProfileDetailsXpGreaterThanOrderByProfileDetailsXpDesc(Integer minXp);
 
     long countByUserType(UserType userType);

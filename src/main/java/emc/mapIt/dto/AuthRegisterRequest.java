@@ -15,8 +15,8 @@ import jakarta.validation.constraints.Size;
  * (ver {@link emc.mapIt.service.PasswordPolicyService}, que lo rechaza explicitamente).
  * </p>
  * <p>
- * {@code nick} es opcional: si se omite, {@link emc.mapIt.service.AuthService} genera
- * uno automaticamente a partir del nombre. El usuario puede cambiarlo desde su perfil.
+ * {@code nick} es opcional: si no se envía (o va en blanco), {@link emc.mapIt.service.UserService}
+ * genera uno único a partir del nombre.
  * </p>
  */
 public record AuthRegisterRequest(

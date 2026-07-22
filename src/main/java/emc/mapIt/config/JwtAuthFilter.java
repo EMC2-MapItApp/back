@@ -1,14 +1,11 @@
 package emc.mapIt.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import emc.mapIt.exception.ApiException;
 import emc.mapIt.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -16,30 +13,37 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Map;
 
 /**
  * Filtro de autenticación JWT ejecutado una vez por request. Si hay cabecera
- * {@code Authorization: Bearer}, valida el token y rellena el {@code SecurityContextHolder}; si
- * el token es inválido/expirado, responde el error inmediatamente. Si no hay cabecera, deja
- * pasar la request sin autenticar — es {@link SecurityConfig} quien decide, por ruta, si eso
- * basta o hace falta autenticación.
+ * {@code Authorization: Bearer} con un token válido, rellena el {@code SecurityContextHolder}.
+ * Sin cabecera, o con un token inválido/expirado, deja pasar la request sin autenticar — es
+ * {@link SecurityConfig} quien decide, por ruta, si eso basta (pública) o hace falta
+ * autenticación (en cuyo caso el {@code authenticationEntryPoint} de {@link SecurityConfig}
+ * responde el 401).
+ * <p>
+ * Importante no cortar la cadena aquí ante un token inválido: el navegador puede llevar en
+ * {@code localStorage} un token caducado de una sesión anterior y seguir enviándolo en
+ * peticiones a rutas públicas (p. ej. {@code /api/v1/auth/reset-password}, vía el interceptor
+ * del frontend que añade el header si existe token, sin distinguir ruta). Cortar aquí rompía
+ * esas rutas públicas con un 401 solo en el navegador con el token caducado — bug real
+ * observado, no solo un caso hipotético.
+ * </p>
  */
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final ObjectMapper objectMapper;
 
-    public JwtAuthFilter(JwtService jwtService, ObjectMapper objectMapper) {
+    public JwtAuthFilter(JwtService jwtService) {
         this.jwtService = jwtService;
-        this.objectMapper = objectMapper;
     }
 
     /**
      * Intenta autenticar la request a partir de la cabecera {@code Authorization}. Sin cabecera
-     * Bearer, continúa la cadena de filtros sin más (rutas públicas); con un token inválido,
-     * corta la cadena y devuelve el error JSON estándar del proyecto.
+     * Bearer o con un token inválido, continúa la cadena sin autenticar — nunca corta la request
+     * ni escribe una respuesta de error por sí mismo (eso es responsabilidad exclusiva de
+     * {@link SecurityConfig} para las rutas que sí requieren sesión).
      */
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -47,29 +51,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            // Sin token: continúa; Spring Security aplica las reglas por ruta
-            filterChain.doFilter(request, response);
-            return;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                var userId = jwtService.extractUserId(authHeader);
+                var auth = new UsernamePasswordAuthenticationToken(
+                        userId.toString(), null, Collections.emptyList());
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            } catch (ApiException ex) {
+                // Token ausente/invalido/expirado: no autenticamos, pero seguimos la cadena.
+                SecurityContextHolder.clearContext();
+            }
         }
 
-        try {
-            var userId = jwtService.extractUserId(authHeader);
-            var auth = new UsernamePasswordAuthenticationToken(
-                    userId.toString(), null, Collections.emptyList());
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            filterChain.doFilter(request, response);
-        } catch (ApiException ex) {
-            SecurityContextHolder.clearContext();
-            writeError(response, ex.getStatus(), ex.getCode(), ex.getMessage());
-        }
-    }
-
-    private void writeError(HttpServletResponse response,
-                            HttpStatus status, String code, String message) throws IOException {
-        response.setStatus(status.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(),
-                Map.of("error", Map.of("code", code, "message", message, "status", status.value())));
+        filterChain.doFilter(request, response);
     }
 }
