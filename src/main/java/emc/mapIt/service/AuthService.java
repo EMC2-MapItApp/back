@@ -69,7 +69,6 @@ public class AuthService {
             throw new ApiException("BAD_REQUEST", "Request de registro requerida", HttpStatus.BAD_REQUEST);
         }
         if (isBlank(request.name()) || isBlank(request.email())
-        if (isBlank(request.name()) || isBlank(request.email())
                 || isBlank(request.password()) || request.userType() == null) {
             throw new ApiException("BAD_REQUEST", "Datos de registro invalidos", HttpStatus.BAD_REQUEST);
         }
