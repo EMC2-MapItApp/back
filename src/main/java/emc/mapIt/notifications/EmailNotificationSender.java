@@ -146,7 +146,8 @@ public class EmailNotificationSender implements NotificationSender {
                 .replace("{{name}}", escapeHtml(userName))
                 .replace("{{groupName}}", escapeHtml(groupName))
                 .replace("{{invitedByName}}", escapeHtml(invitedByName))
-                .replace("{{link}}", link);
+                .replace("{{link}}", link)
+                .replace("{{appLink}}", frontendBaseUrl);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
