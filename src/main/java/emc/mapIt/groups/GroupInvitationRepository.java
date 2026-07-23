@@ -13,6 +13,11 @@ public interface GroupInvitationRepository extends MongoRepository<GroupInvitati
 
     boolean existsByGroupIdAndInvitedUserIdAndStatus(String groupId, String invitedUserId, GroupInvitationStatus status);
 
+    /** Invitaciones por email todavía no reclamadas por ningún usuario — ver {@link GroupInvitation}. */
+    List<GroupInvitation> findByInvitedEmailAndStatus(String invitedEmail, GroupInvitationStatus status);
+
+    boolean existsByGroupIdAndInvitedEmailAndStatus(String groupId, String invitedEmail, GroupInvitationStatus status);
+
     List<GroupInvitation> findByGroupIdAndStatus(String groupId, GroupInvitationStatus status);
 
     void deleteByGroupId(String groupId);

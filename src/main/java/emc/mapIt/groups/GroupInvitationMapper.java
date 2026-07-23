@@ -13,8 +13,9 @@ public class GroupInvitationMapper {
      *
      * @param invitation      entidad persistida
      * @param group           grupo asociado, ya resuelto
-     * @param invitedUserName nombre del usuario invitado, ya resuelto
-     * @param invitedUserNick nick del usuario invitado, ya resuelto
+     * @param invitedUserName nombre del usuario invitado, ya resuelto; {@code null} si la
+     *                        invitación es por email y aún no se ha reclamado
+     * @param invitedUserNick nick del usuario invitado, ya resuelto; {@code null} en el mismo caso
      * @param invitedByName   nombre de quien envió la invitación, ya resuelto
      * @param groupMembers    miembros actuales del grupo, ya resueltos
      * @return DTO de respuesta
@@ -33,6 +34,7 @@ public class GroupInvitationMapper {
                 invitation.getInvitedUserId(),
                 invitedUserName,
                 invitedUserNick,
+                invitation.getInvitedEmail(),
                 invitation.getInvitedByUserId(),
                 invitedByName,
                 invitation.getStatus(),

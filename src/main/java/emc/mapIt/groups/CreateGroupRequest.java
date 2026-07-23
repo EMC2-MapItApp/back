@@ -1,5 +1,6 @@
 package emc.mapIt.groups;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -7,8 +8,8 @@ import java.util.List;
 
 /**
  * Payload de creación de un grupo. El usuario autenticado que llama al endpoint pasa a ser el
- * organizador; {@code inviteUserIds} es opcional (se puede crear un grupo sin invitar a nadie
- * todavía).
+ * organizador; {@code inviteUserIds}/{@code inviteEmails} son opcionales (se puede crear un
+ * grupo sin invitar a nadie todavía).
  */
 public record CreateGroupRequest(
 
@@ -20,5 +21,11 @@ public record CreateGroupRequest(
         @NotBlank String categoryId,
 
         /** Ids de usuarios a invitar de inmediato. Null/vacío = sin invitaciones iniciales. */
-        List<String> inviteUserIds) {
+        List<String> inviteUserIds,
+
+        /**
+         * Direcciones de email a invitar de inmediato, para quien no tenga cuenta todavía (o sí
+         * la tenga: se resuelve igual que {@link InviteByEmailRequest}). Null/vacío = ninguna.
+         */
+        List<@Email String> inviteEmails) {
 }

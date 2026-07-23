@@ -114,6 +114,24 @@ public class GroupController {
     }
 
     /**
+     * Invita por email a alguien que puede no estar registrado todavía. Solo el organizador
+     * puede invitar.
+     *
+     * @param id            identificador del grupo
+     * @param request       email a invitar
+     * @param authorization cabecera Authorization con JWT
+     * @return invitación creada
+     */
+    @PostMapping("/{id}/invitations/by-email")
+    public ResponseEntity<GroupInvitationResponse> inviteByEmail(@PathVariable String id,
+            @Valid @RequestBody InviteByEmailRequest request,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Solicitud de invitación por email groupId={}", id);
+        GroupInvitationResponse response = groupService.inviteByEmail(authService.requireUserId(authorization), id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
      * Cancela una invitación pendiente (la elimina). El organizador del grupo o el propio
      * invitado pueden cancelarla.
      *

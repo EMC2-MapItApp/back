@@ -10,6 +10,11 @@ import java.util.List;
  * {@code invitedUserName} y {@code invitedUserNick} permiten al organizador identificar a quién
  * invitó en la vista de edición del grupo, sin carga adicional. {@code groupMemberCount} es
  * {@code groupMembers.size()}, incluido aparte para no obligar al frontend a recontar la lista.
+ * <p>
+ * {@code invitedUserId}/{@code invitedUserName}/{@code invitedUserNick} son {@code null} y
+ * {@code invitedEmail} lleva la dirección invitada mientras la invitación no ha sido reclamada
+ * por un usuario registrado (ver {@link GroupInvitation}).
+ * </p>
  */
 public record GroupInvitationResponse(
         String id,
@@ -22,6 +27,7 @@ public record GroupInvitationResponse(
         String invitedUserId,
         String invitedUserName,
         String invitedUserNick,
+        String invitedEmail,
         String invitedByUserId,
         String invitedByName,
         GroupInvitationStatus status,
