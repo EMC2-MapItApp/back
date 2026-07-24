@@ -64,9 +64,11 @@ emc.mapIt
 │                     y CategorySeeder
 ├── geo/              GeoIpController, GeoIpService, GeoIpResponse, puerto GeoLocationProvider +
 │                     adaptador IpApiGeoLocationProvider (hexagonal, ver sección siguiente)
-├── notifications/    puerto NotificationSender + adaptador EmailNotificationSender (hexagonal;
-│                     hoy solo correo, punto de extensión para el "sistema de notificaciones"
-│                     de IDEAS.md)
+├── notifications/    dos puertos hexagonales: NotificationSender (email, adaptador
+│                     EmailNotificationSender) y PushSender (push nativo del SO vía VAPID,
+│                     adaptador WebPushSender) + NotificationService (orquestador que persiste
+│                     el centro in-app y hace fan-out a ambos canales) + Notification/
+│                     PushSubscription y sus repos
 └── shared/           ApiException, GlobalExceptionHandler, ErrorResponse, CorsConfig,
                       JacksonConfig, MongoConfig, SecurityConfig, StartupLogger, AdminUserSeeder
 ```
@@ -111,10 +113,15 @@ Se aplica de forma selectiva, donde ya hay o va a haber más de una forma de hac
   `GeoLocationProvider`; `IpApiGeoLocationProvider` es el adaptador que sabe que el proveedor es
   ip-api.com, su URL y el formato de su respuesta JSON. Cambiar de proveedor, o añadir uno de
   fallback, es sustituir el adaptador sin tocar el caso de uso ni el controller.
-- **`notifications/`** (implementado) — `EmailVerificationService` y `PasswordResetService`
-  dependen del puerto `NotificationSender`; `EmailNotificationSender` es el adaptador de email
-  vía SMTP. `IDEAS.md` ya anticipa más canales (in-app, push) — añadir uno es un adaptador nuevo,
-  no tocar los casos de uso de auth.
+- **`notifications/`** (implementado, dos puertos) — `EmailVerificationService` y
+  `PasswordResetService` dependen del puerto `NotificationSender` (adaptador
+  `EmailNotificationSender`, SMTP), sin cambios desde la Fase 1 de auth. El dominio Grupos añade
+  un segundo puerto, `PushSender` (adaptador `WebPushSender`, protocolo Web Push/VAPID) —
+  `NotificationService` es el orquestador que, por cada evento de grupo, llama al email existente,
+  persiste una `Notification` para el centro in-app y hace fan-out del push a las
+  `PushSubscription` del usuario; `GroupService` solo conoce este orquestador, no los canales
+  concretos. Camino a Capacitor/FCM/APNs cuando se empaquete la app: un adaptador `PushSender`
+  más, no un reemplazo (ver `IDEAS.md`).
 - Si algún día se monetiza (no descartado en el contexto del proyecto), una pasarela de pago es
   otro punto natural para aislar el proveedor concreto detrás de un puerto.
 

@@ -2,7 +2,7 @@ package emc.mapIt.groups;
 
 import emc.mapIt.domain.MapItUser;
 import emc.mapIt.exception.ApiException;
-import emc.mapIt.notifications.NotificationSender;
+import emc.mapIt.notifications.NotificationService;
 import emc.mapIt.repository.MainCategoryRepository;
 import emc.mapIt.service.UserService;
 import org.slf4j.Logger;
@@ -40,7 +40,7 @@ public class GroupService {
     private final GroupInvitationRepository groupInvitationRepository;
     private final MainCategoryRepository mainCategoryRepository;
     private final UserService userService;
-    private final NotificationSender notificationSender;
+    private final NotificationService notificationService;
     private final GroupMapper groupMapper;
     private final GroupInvitationMapper groupInvitationMapper;
 
@@ -53,7 +53,7 @@ public class GroupService {
             GroupInvitationRepository groupInvitationRepository,
             MainCategoryRepository mainCategoryRepository,
             UserService userService,
-            NotificationSender notificationSender,
+            NotificationService notificationService,
             GroupMapper groupMapper,
             GroupInvitationMapper groupInvitationMapper) {
         this.groupRepository = groupRepository;
@@ -61,7 +61,7 @@ public class GroupService {
         this.groupInvitationRepository = groupInvitationRepository;
         this.mainCategoryRepository = mainCategoryRepository;
         this.userService = userService;
-        this.notificationSender = notificationSender;
+        this.notificationService = notificationService;
         this.groupMapper = groupMapper;
         this.groupInvitationMapper = groupInvitationMapper;
     }
@@ -452,9 +452,8 @@ public class GroupService {
         MapItUser requester = userService.getByIdOrThrow(requesterId);
         MapItUser organizer = userService.getByIdOrThrow(group.getOrganizerId());
 
-        notificationSender.sendGroupOrganizerNoticeEmail(
-                organizer.getEmail(), organizer.getName(), group.getName(),
-                requester.getName(), request.subject().trim(), request.message().trim());
+        notificationService.notifyGroupOrganizerNotice(
+                organizer, group.getName(), requester, request.subject().trim(), request.message().trim());
 
         log.info("Aviso enviado al organizador groupId={} fromUserId={}", groupId, requesterId);
     }
@@ -497,9 +496,7 @@ public class GroupService {
 
         members.forEach(member -> {
             MapItUser recipient = userService.getByIdOrThrow(member.getUserId());
-            notificationSender.sendGroupBroadcastEmail(
-                    recipient.getEmail(), recipient.getName(), group.getName(), organizer.getName(),
-                    subject, message);
+            notificationService.notifyGroupBroadcast(recipient, group.getName(), organizer, subject, message);
         });
 
         log.info("Mensaje difundido a miembros groupId={} organizerId={} destinatarios={}",
@@ -539,9 +536,8 @@ public class GroupService {
                 saved.getId(), group.getId(), invitedUserId);
 
         MapItUser organizer = userService.getByIdOrThrow(requesterId);
-        notificationSender.sendGroupInvitationEmail(
-                invitedUser.getEmail(), invitedUser.getName(), group.getName(), organizer.getName(), saved.getId());
-        log.info("notificationSender.sendGroupInvitationEmail() ha retornado sin excepción invitationId={}",
+        notificationService.notifyGroupInvitation(invitedUser, group.getName(), organizer, saved.getId());
+        log.info("notificationService.notifyGroupInvitation() ha retornado sin excepción invitationId={}",
                 saved.getId());
 
         return saved;
@@ -578,7 +574,7 @@ public class GroupService {
                 saved.getId(), group.getId());
 
         MapItUser organizer = userService.getByIdOrThrow(requesterId);
-        notificationSender.sendGroupSignupInvitationEmail(email, group.getName(), organizer.getName());
+        notificationService.notifyGroupSignupInvitationEmail(email, group.getName(), organizer.getName());
 
         return saved;
     }

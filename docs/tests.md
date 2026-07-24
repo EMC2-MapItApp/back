@@ -16,8 +16,12 @@ src/test/java/emc/mapIt/
 │   ├── PasswordPolicyServiceTest.java     ← unitario puro (Fase 1 auth)
 │   ├── EmailVerificationServiceTest.java  ← unitario con Mockito (Fase 1 auth)
 │   └── PasswordResetServiceTest.java      ← unitario con Mockito (Fase 1 auth)
-└── controller/
-    └── AuthControllerTest.java     ← capa web con MockMvc
+├── controller/
+│   └── AuthControllerTest.java     ← capa web con MockMvc
+└── notifications/
+    ├── NotificationServiceTest.java     ← unitario con Mockito (orquestador email/in-app/push)
+    ├── WebPushSenderTest.java           ← unitario puro (adaptador VAPID, sin red real)
+    └── NotificationControllerTest.java  ← capa web con MockMvc
 ```
 
 ---
@@ -235,6 +239,62 @@ A diferencia de `resend-verification`, aquí sí se distingue si el email existe
 
 ---
 
+## NotificationServiceTest
+
+**Tipo:** Unitario con Mockito.
+**Clase bajo test:** `emc.mapIt.notifications.NotificationService`
+
+Dependencias mockeadas: `NotificationSender`, `PushSender`, `NotificationRepository`, `PushSubscriptionRepository`.
+
+| Método de test | Descripción |
+|---|---|
+| `notifyGroupInvitation_enviaEmailYPersisteNotificacionInApp` | Llama al email existente y persiste una `Notification` in-app |
+| `notifyGroupInvitation_conSuscripcionesActivas_envíaPushACadaUna` | Hace fan-out del push a todas las `PushSubscription` del usuario |
+| `notifyGroupInvitation_conSuscripcionCaducada_laBorraYSigueConLasDemas` | `PushSubscriptionExpiredException` borra solo esa suscripción, sin abortar el resto |
+| `notifyGroupInvitation_conFalloDeEntregaPush_noPropagaLaExcepcion` | `PushDeliveryException` no rompe el flujo de negocio (push es best-effort) |
+| `notifyGroupSignupInvitationEmail_soloEnviaEmail_sinPersistirNiPush` | Invitación por email sin cuenta: pass-through solo al email, sin `userId` al que asociar push/in-app |
+| `notifyGroupOrganizerNotice_enviaEmailYPersisteNotificacion` | Aviso al organizador: email + notificación in-app |
+| `notifyGroupBroadcast_enviaEmailYPersisteNotificacion` | Difusión a un miembro: email + notificación in-app |
+| `markRead_conNotificacionPropiaNoLeida_laMarcaLeida` | Marca como leída y fija `readAt` |
+| `markRead_yaLeida_noVuelveAGuardar` | No repite el `save` si ya estaba leída |
+| `markAllRead_marcaTodasLasNoLeidas` | Marca en bloque todas las no leídas del usuario |
+| `registerSubscription_nueva_laCreaConDatosDelDispositivo` | Registra una suscripción nueva con endpoint/claves/fecha |
+| `unregisterSubscription_borraPorEndpoint` | Desregistra por `endpoint` |
+
+---
+
+## WebPushSenderTest
+
+**Tipo:** Unitario puro — sin red real, con un par de claves VAPID generado en `@BeforeAll` vía `nl.martijndwars.webpush.Utils`.
+**Clase bajo test:** `emc.mapIt.notifications.WebPushSender`
+
+| Método de test | Descripción |
+|---|---|
+| `send_sinClavesVapidConfiguradas_lanzaPushDeliveryExceptionSinIntentarRed` | Sin `mapit.push.vapid.*` configurado, el adaptador queda inactivo y falla rápido (fail-soft) |
+| `send_conClaveDeSuscriptorInvalida_envuelveElFalloEnPushDeliveryException` | Clave `p256dh` inválida del suscriptor → fallo de cifrado envuelto en `PushDeliveryException`, antes de cualquier llamada HTTP |
+
+---
+
+## NotificationControllerTest
+
+**Tipo:** Capa web con `@WebMvcTest` y `MockMvc` (Security excluido, mismo criterio que `AuthControllerTest`).
+**Clase bajo test:** `emc.mapIt.notifications.NotificationController`
+
+Dependencias mockeadas con `@MockBean`: `NotificationService`, `NotificationMapper`, `AuthService`, `JwtService`.
+
+| Método de test | Descripción |
+|---|---|
+| `list_devuelveNotificacionesMapeadas` | `GET /api/v1/notifications` devuelve el histórico mapeado a DTO |
+| `unreadCount_devuelveContador` | `GET /unread-count` devuelve `{ "count": n }` |
+| `markRead_marcaLaNotificacionComoLeida` | `PATCH /{id}/read` → HTTP 204 y delega en el servicio |
+| `markAllRead_marcaTodasComoLeidas` | `POST /read-all` → HTTP 204 y delega en el servicio |
+| `pushPublicKey_devuelveLaClaveConfigurada` | `GET /push/public-key` devuelve la clave VAPID configurada (única ruta pública del módulo) |
+| `registerPushSubscription_conBodyValido_registraLaSuscripcion` | `POST /push/subscriptions` con body válido → HTTP 204 |
+| `registerPushSubscription_sinEndpoint_devuelve400` | Body sin `endpoint` → HTTP 400 (Bean Validation) |
+| `unregisterPushSubscription_borraPorEndpoint` | `DELETE /push/subscriptions` con body `{endpoint}` → HTTP 204 |
+
+---
+
 ## Ejecución
 
 ```bash
@@ -246,4 +306,7 @@ A diferencia de `resend-verification`, aquí sí se distingue si el email existe
 
 # Solo los tests de controladores
 ./mvnw test -Dtest="AuthControllerTest"
+
+# Solo los tests del módulo de notificaciones (in-app + push VAPID)
+./mvnw test -Dtest="NotificationServiceTest,WebPushSenderTest,NotificationControllerTest"
 ```

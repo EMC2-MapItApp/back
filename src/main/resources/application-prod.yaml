@@ -33,6 +33,11 @@ mapit:
   mail:
     # Dominio real de Cloudflare donde se sirve el frontend en produccion
     frontend-base-url: ${MAPIT_FRONTEND_URL}
+  push:
+    vapid:
+      # Par de claves VAPID — Secret Manager, igual que MAPIT_JWT_SECRET/MAPIT_SMTP_PASSWORD.
+      public-key: ${MAPIT_VAPID_PUBLIC_KEY:}
+      private-key: ${MAPIT_VAPID_PRIVATE_KEY:}
 
 logging:
   level:

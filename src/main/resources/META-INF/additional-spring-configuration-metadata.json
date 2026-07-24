@@ -1,0 +1,32 @@
+{"properties": [
+  {
+    "name": "mapit.jwt.secret",
+    "type": "java.lang.String",
+    "description": "A description for 'mapit.jwt.secret'"
+  },
+  {
+    "name": "mapit.jwt.expiration-seconds",
+    "type": "java.lang.String",
+    "description": "A description for 'mapit.jwt.expiration-seconds'"
+  },
+  {
+    "name": "mapit.geo.allow-sim-ip",
+    "type": "java.lang.String",
+    "description": "A description for 'mapit.geo.allow-sim-ip'"
+  },
+  {
+    "name": "mapit.mail.frontend-base-url",
+    "type": "java.lang.String",
+    "description": "A description for 'mapit.mail.frontend-base-url'"
+  },
+  {
+    "name": "mapit.push.vapid.private-key",
+    "type": "java.lang.String",
+    "description": "A description for 'mapit.push.vapid.private-key'"
+  },
+  {
+    "name": "mapit.push.vapid.public-key",
+    "type": "java.lang.String",
+    "description": "A description for 'mapit.push.vapid.public-key'"
+  }
+]}

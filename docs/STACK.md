@@ -23,7 +23,7 @@ consideradas y criterios objetivos de revisión en [`docs/ARQUITECTURA.md`](ARQU
 | Decisión | Por qué |
 |---|---|
 | Monolito modular por dominio (no microservicios) | Un único desarrollador y tráfico de proyecto personal sobre Cloud Run a coste ~0 — dividir en servicios ahora añadiría complejidad operativa (red, despliegues múltiples, consistencia eventual) sin ningún problema real que resolver. Los módulos se organizan por dominio de negocio (no por capa técnica) y cada uno es dueño exclusivo de sus colecciones Mongo, así que extraer uno como servicio el día que un criterio objetivo lo justifique es un cambio mecánico, no una reescritura. |
-| Arquitectura hexagonal (puertos y adaptadores) en `geo/` y `notifications/` | Piloto selectivo, no una regla global. Son los dos puntos del dominio con una dependencia externa reemplazable (proveedor GeoIP, canal de notificación) y, en `notifications/`, con más canales ya previstos (`IDEAS.md`: push, in-app). El caso de uso depende de una interfaz (puerto); el proveedor externo concreto vive en un adaptador aparte, sustituible sin tocar el caso de uso ni el controller. |
+| Arquitectura hexagonal (puertos y adaptadores) en `geo/` y `notifications/` | Piloto selectivo, no una regla global. Son los dos puntos del dominio con una dependencia externa reemplazable (proveedor GeoIP, canal de notificación). `notifications/` ya tiene dos puertos en producción: `NotificationSender` (email) y `PushSender` (push nativo del SO) — el caso de uso depende de una interfaz; el proveedor externo concreto vive en un adaptador aparte, sustituible sin tocar el caso de uso ni el controller. |
 
 ## Lenguaje y framework
 
@@ -53,6 +53,14 @@ despliegue.
 | JWT propio (HMAC), `JwtService` | Implementado a mano en vez de una librería (`jjwt`, etc.) como ejercicio deliberado de entender el formato JWT (header.payload.firma) y HMAC-SHA a bajo nivel, no por rechazo a las librerías estándar. |
 | [Spring Security](https://spring.io/projects/spring-security) | `JwtAuthFilter` (`OncePerRequestFilter`) rellena el `SecurityContextHolder`; las reglas de ruta pública/protegida viven en `SecurityConfig`. Sesiones stateless, CSRF deshabilitado — es una API de tokens pura. |
 | [zxcvbn](https://github.com/nulab/zxcvbn4j) (puerto Java) | Validación de fortaleza de contraseña con la misma escala 0-4 que `@zxcvbn-ts` en el frontend, para que el feedback de fuerza sea consistente en ambos lados. |
+
+## Notificaciones
+
+| Pieza | Por qué |
+|---|---|
+| [Web Push](https://developer.mozilla.org/en-US/docs/Web/API/Push_API) (protocolo estándar, VAPID) | Notificaciones nativas del SO en desktop y móvil sin depender de un proveedor propietario (FCM/APNs) ni de empaquetar la app — el navegador entrega el push a la bandeja del sistema aunque la pestaña esté cerrada. Encaja con el frontend actual (SPA Angular, sin Capacitor/Electron todavía). |
+| [`webpush-java`](https://github.com/web-push-libs/webpush-java) (`nl.martijndwars:web-push`) | Implementación Java del protocolo Web Push (firma VAPID + cifrado `aes128gcm`) — evita reimplementar el cifrado ECDH a mano, a diferencia del JWT propio (ahí sí era un ejercicio deliberado; aquí el cifrado de push no aporta ese mismo valor de aprendizaje y sí mucho riesgo de errores criptográficos). |
+| [Bouncy Castle](https://www.bouncycastle.org/java.html) | Proveedor JCE que exige `webpush-java` para las operaciones de curva elíptica (P-256) del cifrado del payload. |
 
 ## Testing
 
@@ -104,3 +112,8 @@ Desglose completo por clase de test: [`docs/tests.md`](tests.md).
   modelo de dominio y documento Mongo con mappers para entidades de solo CRUD (categorías,
   niveles, capacidades...) sería boilerplate sin ningún cambio de infraestructura previsto que
   lo justifique.
+- **FCM/APNs (push propietario) o Capacitor/Electron** para las notificaciones nativas: Web
+  Push (VAPID) ya cubre desktop y móvil vía navegador sin empaquetar la app ni depender de un
+  proveedor concreto. Quedan como paso siguiente natural cuando el frontend se empaquete de
+  verdad como app nativa — el puerto `PushSender` ya está diseñado para admitir un adaptador más
+  sin tocar `NotificationService`.
