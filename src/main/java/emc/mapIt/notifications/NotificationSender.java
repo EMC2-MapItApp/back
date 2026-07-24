@@ -65,8 +65,25 @@ public interface NotificationSender {
      * @param organizerName nombre del organizador, para personalizar el mensaje
      * @param groupName     nombre del grupo
      * @param fromUserName  nombre del miembro que envía el aviso
+     * @param subject       asunto elegido por el remitente; se muestra en el cuerpo del correo,
+     *                      no reemplaza el asunto real del email (fijo, ver adaptador)
      * @param message       mensaje escrito por el miembro
      */
     void sendGroupOrganizerNoticeEmail(String to, String organizerName, String groupName, String fromUserName,
-            String message);
+            String subject, String message);
+
+    /**
+     * Notifica a un miembro de un grupo de un mensaje difundido por el organizador a (una parte
+     * o) todos los miembros.
+     *
+     * @param to             destino del miembro (hoy: dirección de email)
+     * @param recipientName  nombre del miembro destinatario, para personalizar el mensaje
+     * @param groupName      nombre del grupo
+     * @param organizerName  nombre del organizador que envía el mensaje
+     * @param subject        asunto elegido por el organizador; se muestra en el cuerpo del
+     *                       correo, no reemplaza el asunto real del email (fijo, ver adaptador)
+     * @param message        mensaje escrito por el organizador
+     */
+    void sendGroupBroadcastEmail(String to, String recipientName, String groupName, String organizerName,
+            String subject, String message);
 }

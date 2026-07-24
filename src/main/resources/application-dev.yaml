@@ -38,6 +38,13 @@ mapit:
   mail:
     # URL publica del frontend usada para construir el enlace de verificacion
     frontend-base-url: ${MAPIT_FRONTEND_URL:http://localhost:4200}
+  push:
+    vapid:
+      # Par de claves VAPID (P-256, base64url) para Web Push — vacías por defecto: sin ellas
+      # WebPushSender queda inactivo (log de warning al arrancar) pero el resto de la app
+      # funciona con normalidad. Generar con, p.ej.: `npx web-push generate-vapid-keys`.
+      public-key: ${MAPIT_VAPID_PUBLIC_KEY:}
+      private-key: ${MAPIT_VAPID_PRIVATE_KEY:}
 
 logging:
   pattern:

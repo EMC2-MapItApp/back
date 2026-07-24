@@ -63,6 +63,10 @@ public class SecurityConfig {
                 // Geo - público (mapa accesible sin login)
                 .requestMatchers(HttpMethod.GET, "/api/v1/geo/**").permitAll()
 
+                // Notificaciones - solo la clave pública VAPID es accesible sin sesión (el
+                // frontend la necesita justo tras el login para suscribirse al push)
+                .requestMatchers(HttpMethod.GET, "/api/v1/notifications/push/public-key").permitAll()
+
                 // Categorías - lecturas públicas, escrituras protegidas
                 .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
 

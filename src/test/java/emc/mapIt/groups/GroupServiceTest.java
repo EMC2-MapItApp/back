@@ -3,7 +3,7 @@ package emc.mapIt.groups;
 import emc.mapIt.domain.MapItUser;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
-import emc.mapIt.notifications.NotificationSender;
+import emc.mapIt.notifications.NotificationService;
 import emc.mapIt.repository.MainCategoryRepository;
 import emc.mapIt.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +35,7 @@ class GroupServiceTest {
     @Mock private GroupInvitationRepository groupInvitationRepository;
     @Mock private MainCategoryRepository mainCategoryRepository;
     @Mock private UserService userService;
-    @Mock private NotificationSender notificationSender;
+    @Mock private NotificationService notificationService;
 
     // Mappers reales (sin dependencias propias) en vez de mocks, igual que PublicationMapper
     // en PublicationServiceTest sería tratado si existiera — su lógica es trivial y probarla
@@ -58,7 +58,7 @@ class GroupServiceTest {
     void setUp() {
         groupService = new GroupService(
                 groupRepository, groupMemberRepository, groupInvitationRepository,
-                mainCategoryRepository, userService, notificationSender,
+                mainCategoryRepository, userService, notificationService,
                 groupMapper, groupInvitationMapper);
 
         grupo = new Group();
@@ -145,8 +145,7 @@ class GroupServiceTest {
 
         // El propio organizador aparece en inviteUserIds pero se ignora (no se autoinvita).
         verify(groupInvitationRepository, times(1)).save(any(GroupInvitation.class));
-        verify(notificationSender).sendGroupInvitationEmail(
-                eq("miembro@test.com"), eq("Miembro"), eq("Club"), eq("Organizador"), eq("inv-1"));
+        verify(notificationService).notifyGroupInvitation(eq(miembro), eq("Club"), eq(organizador), eq("inv-1"));
     }
 
     // ── updateGroup ──────────────────────────────────────────────
@@ -248,8 +247,8 @@ class GroupServiceTest {
 
         assertThat(response.invitedUserId()).isEqualTo(MEMBER_ID);
         assertThat(response.status()).isEqualTo(GroupInvitationStatus.PENDING);
-        verify(notificationSender).sendGroupInvitationEmail(
-                eq("miembro@test.com"), eq("Miembro"), eq("Club de Ciclismo"), eq("Organizador"), eq("inv-1"));
+        verify(notificationService).notifyGroupInvitation(
+                eq(miembro), eq("Club de Ciclismo"), eq(organizador), eq("inv-1"));
     }
 
     @Test
@@ -424,7 +423,7 @@ class GroupServiceTest {
 
     @Test
     void notifyOrganizer_comoMiembro_enviaEmailAlOrganizador() {
-        NotifyOrganizerRequest request = new NotifyOrganizerRequest("¿Cambiamos la hora de la próxima ruta?");
+        NotifyOrganizerRequest request = new NotifyOrganizerRequest("Horario", "¿Cambiamos la hora de la próxima ruta?");
 
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
         when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(true);
@@ -433,8 +432,8 @@ class GroupServiceTest {
 
         groupService.notifyOrganizer(MEMBER_ID, GROUP_ID, request);
 
-        verify(notificationSender).sendGroupOrganizerNoticeEmail(
-                eq("org@test.com"), eq("Organizador"), eq("Club de Ciclismo"), eq("Miembro"), anyString());
+        verify(notificationService).notifyGroupOrganizerNotice(
+                eq(organizador), eq("Club de Ciclismo"), eq(miembro), anyString(), anyString());
     }
 
     @Test
@@ -443,10 +442,10 @@ class GroupServiceTest {
         when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, ORGANIZER_ID)).thenReturn(true);
 
         assertThatThrownBy(() -> groupService.notifyOrganizer(
-                ORGANIZER_ID, GROUP_ID, new NotifyOrganizerRequest("mensaje")))
+                ORGANIZER_ID, GROUP_ID, new NotifyOrganizerRequest("asunto", "mensaje")))
                 .isInstanceOf(ApiException.class);
 
-        verify(notificationSender, never()).sendGroupOrganizerNoticeEmail(any(), any(), any(), any(), any());
+        verify(notificationService, never()).notifyGroupOrganizerNotice(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -455,7 +454,7 @@ class GroupServiceTest {
         when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, "extraño")).thenReturn(false);
 
         assertThatThrownBy(() -> groupService.notifyOrganizer(
-                "extraño", GROUP_ID, new NotifyOrganizerRequest("mensaje")))
+                "extraño", GROUP_ID, new NotifyOrganizerRequest("asunto", "mensaje")))
                 .isInstanceOf(ApiException.class);
     }
 

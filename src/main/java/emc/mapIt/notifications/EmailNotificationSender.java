@@ -37,6 +37,7 @@ public class EmailNotificationSender implements NotificationSender {
     private static final String GROUP_INVITATION_TEMPLATE_PATH = "templates/email/group-invitation-email.html";
     private static final String GROUP_SIGNUP_INVITATION_TEMPLATE_PATH = "templates/email/group-signup-invitation-email.html";
     private static final String GROUP_ORGANIZER_NOTICE_TEMPLATE_PATH = "templates/email/group-organizer-notice-email.html";
+    private static final String GROUP_BROADCAST_TEMPLATE_PATH = "templates/email/group-broadcast-email.html";
 
     private final JavaMailSender mailSender;
     private final String fromAddress;
@@ -215,7 +216,7 @@ public class EmailNotificationSender implements NotificationSender {
      */
     @Override
     public void sendGroupOrganizerNoticeEmail(String to, String organizerName, String groupName, String fromUserName,
-            String message) {
+            String subject, String message) {
         log.info("Preparando email de aviso al organizador: to={} groupName={} fromUserName={}",
                 to, groupName, fromUserName);
 
@@ -223,6 +224,7 @@ public class EmailNotificationSender implements NotificationSender {
                 .replace("{{organizerName}}", escapeHtml(organizerName))
                 .replace("{{groupName}}", escapeHtml(groupName))
                 .replace("{{fromUserName}}", escapeHtml(fromUserName))
+                .replace("{{subject}}", escapeHtml(subject))
                 .replace("{{message}}", escapeHtml(message));
 
         try {
@@ -242,6 +244,45 @@ public class EmailNotificationSender implements NotificationSender {
             throw new ApiException(
                     "MAIL_SEND_FAILED",
                     "No se pudo enviar el correo de aviso al organizador.",
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Envia a un miembro del grupo el mensaje difundido por el organizador. Igual que
+     * {@link #sendGroupOrganizerNoticeEmail}, incrusta texto libre ({@code message}) y por tanto
+     * se escapa a HTML antes de insertarlo en la plantilla.
+     */
+    @Override
+    public void sendGroupBroadcastEmail(String to, String recipientName, String groupName, String organizerName,
+            String subject, String message) {
+        log.info("Preparando email de difusión a miembro: to={} groupName={} organizerName={}",
+                to, groupName, organizerName);
+
+        String html = loadTemplate(GROUP_BROADCAST_TEMPLATE_PATH)
+                .replace("{{recipientName}}", escapeHtml(recipientName))
+                .replace("{{groupName}}", escapeHtml(groupName))
+                .replace("{{organizerName}}", escapeHtml(organizerName))
+                .replace("{{subject}}", escapeHtml(subject))
+                .replace("{{message}}", escapeHtml(message));
+
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(to);
+            helper.setFrom(fromAddress);
+            helper.setSubject("Nuevo mensaje en tu grupo \"" + groupName + "\" de MapIt");
+            helper.setText(html, true);
+
+            log.debug("Enviando email de difusión a miembro vía SMTP: to={} from={}", to, fromAddress);
+            mailSender.send(mimeMessage);
+            log.info("Email de difusión a miembro enviado correctamente: to={}", to);
+        } catch (MessagingException | MailException ex) {
+            log.error("Fallo enviando email de difusión a miembro: to={} groupName={} causa={}: {}",
+                    to, groupName, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw new ApiException(
+                    "MAIL_SEND_FAILED",
+                    "No se pudo enviar el correo a uno de los miembros del grupo.",
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

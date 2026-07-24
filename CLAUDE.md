@@ -77,9 +77,12 @@ Dos módulos aparte, primer piloto de una organización por dominio en lugar de 
 - `geo/` — `GeoIpController`, `GeoIpService` (caso de uso), puerto `GeoLocationProvider` y su
   adaptador `IpApiGeoLocationProvider` (ip-api.com), modelo de dominio `GeoLocation`,
   `GeoIpResponse` (DTO de API)
-- `notifications/` — puerto `NotificationSender` y su adaptador `EmailNotificationSender`
-  (SMTP vía `JavaMailSender`); lo consumen `EmailVerificationService` y `PasswordResetService`
-  desde `service/`, que no conocen el canal de entrega concreto
+- `notifications/` — dos puertos hexagonales: `NotificationSender` (email vía `JavaMailSender`,
+  adaptador `EmailNotificationSender`; lo consumen `EmailVerificationService` y
+  `PasswordResetService` desde `service/`) y `PushSender` (push nativo del SO vía Web Push/VAPID,
+  adaptador `WebPushSender`). `NotificationService` es el orquestador que usa `GroupService` para
+  los eventos de grupo: llama al email, persiste el centro in-app (`Notification`) y hace fan-out
+  del push — ver sección **Notificaciones** más abajo para el flujo completo
 
 **Auth**: JWT propio basado en HMAC (sin librería externa de JWT) vía `JwtService`, aplicado en
 cada request por `JwtAuthFilter` (un `OncePerRequestFilter` que lee la cabecera
@@ -97,6 +100,36 @@ verificación de email: `PasswordResetToken` es una colección hermana de
 por `PasswordResetService`. A diferencia de `resend-verification`, `forgot-password` sí revela
 si el email existe (404 si no) — decisión de producto deliberada, ya que `register` ya lo revela
 vía 409 CONFLICT y no hay anti-enumeración real que proteger aquí.
+
+**Notificaciones**: `NotificationService` (en `notifications/`) es el orquestador que
+`GroupService` invoca para sus 3 eventos con push/in-app (invitación a grupo, aviso al
+organizador, difusión a miembros — la invitación por email a alguien sin cuenta se queda
+solo-email, no hay `userId` al que asociar nada más). Por cada evento hace tres cosas en orden:
+(1) llama al email existente vía `NotificationSender` — si falla, lanza `ApiException` y aborta,
+comportamiento sin cambios; (2) persiste una `Notification` in-app (colección `notifications`,
+fuente de verdad del centro de notificaciones — sobrevive aunque el push falle o el permiso esté
+denegado); (3) hace fan-out del push a cada `PushSubscription` del usuario vía `PushSender`
+(adaptador `WebPushSender`, protocolo Web Push/VAPID) — el push es *best-effort*: un fallo aquí
+(`PushDeliveryException`) se loguea y no aborta el evento; una suscripción caducada
+(`PushSubscriptionExpiredException`, el push service responde 404/410) se borra sola.
+
+Dos matices de flujo que no son evidentes a primera vista:
+
+- El JWT solo interviene en el instante de `POST /api/v1/notifications/push/subscriptions` (para
+  saber a qué `userId` asociar el `endpoint` del navegador) — la `PushSubscription` queda
+  persistida desligada de ese token. El envío real del push es enteramente servidor-a-servidor
+  (`NotificationService` → `WebPushSender` → push service del navegador), sin JWT de por medio;
+  sigue funcionando aunque el token que la registró haya expirado o el usuario haya cerrado
+  sesión en otro dispositivo.
+- El Service Worker y la suscripción del `PushManager` del navegador son por **dispositivo**, no
+  por usuario (`pushManager.subscribe()` devuelve siempre la misma suscripción si ya hay una
+  activa). En un dispositivo compartido, si un usuario activa el push y luego otro inicia sesión
+  y también lo activa, el mismo `endpoint` se reasigna al segundo —
+  `registerSubscription` lo loguea al detectarlo. El frontend (`HomeShellComponent.logout()`)
+  intenta evitarlo desactivando el push *antes* de borrar el token (si se borrara antes, la baja
+  `DELETE /push/subscriptions`, autenticada, fallaría con 401); si el token ya había expirado en
+  el momento del logout, esa baja falla en silencio (best-effort) y la suscripción queda huérfana
+  hasta que el propio push service la invalide en el siguiente envío.
 
 **Seeders** (`config/*Seeder.java`, p.ej. `AdminUserSeeder`, `CategorySeeder`) pueblan datos de
 referencia (categorías, un usuario admin) al arrancar — revísalos antes de asumir que un MongoDB
