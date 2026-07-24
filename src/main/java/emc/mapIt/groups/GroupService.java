@@ -101,8 +101,14 @@ public class GroupService {
         initialInvitees.remove(organizerId);
         initialInvitees.forEach(invitedUserId -> sendInvitation(saved, organizerId, invitedUserId));
 
-        log.info("Grupo creado groupId={} organizerId={} invitacionesIniciales={}",
-                saved.getId(), organizerId, initialInvitees.size());
+        Set<String> initialEmailInvitees = new LinkedHashSet<>();
+        if (request.inviteEmails() != null) {
+            request.inviteEmails().forEach(email -> initialEmailInvitees.add(normalizeEmail(email)));
+        }
+        initialEmailInvitees.forEach(email -> sendInvitationByEmail(saved, organizerId, email));
+
+        log.info("Grupo creado groupId={} organizerId={} invitacionesIniciales={} invitacionesEmailIniciales={}",
+                saved.getId(), organizerId, initialInvitees.size(), initialEmailInvitees.size());
         return buildGroupResponse(saved);
     }
 
@@ -197,18 +203,65 @@ public class GroupService {
     }
 
     /**
-     * Lista las invitaciones pendientes del usuario autenticado.
+     * Invita por email a alguien que puede no estar registrado todavía. Solo el organizador
+     * puede invitar. Si el email ya pertenece a un usuario, se resuelve como una invitación
+     * normal ({@link #sendInvitation}); si no, queda pendiente de reclamar cuando esa persona
+     * se registre y verifique su correo (ver {@link GroupInvitation}).
+     *
+     * @param requesterId id del usuario autenticado
+     * @param groupId     id del grupo
+     * @param request     email a invitar
+     * @return invitación creada
+     */
+    public GroupInvitationResponse inviteByEmail(String requesterId, String groupId, InviteByEmailRequest request) {
+        requireUserId(requesterId);
+        Group group = getGroupOrThrow(groupId);
+        requireOrganizer(group, requesterId);
+
+        if (request == null || request.email() == null || request.email().isBlank()) {
+            throw new ApiException("BAD_REQUEST", "email requerido", HttpStatus.BAD_REQUEST);
+        }
+
+        GroupInvitation invitation = sendInvitationByEmail(group, requesterId, request.email());
+        log.info("Invitación por email creada groupId={} invitedByUserId={}", groupId, requesterId);
+        return buildInvitationResponse(invitation);
+    }
+
+    /**
+     * Lista las invitaciones pendientes del usuario autenticado. Antes de leer, reclama
+     * cualquier invitación por email que coincida con su correo verificado (ver
+     * {@link GroupInvitation}) — por eso escribe y no es de solo lectura.
      *
      * @param userId id del usuario autenticado
      * @return invitaciones en estado PENDING
      */
-    @Transactional(readOnly = true)
     public List<GroupInvitationResponse> getPendingInvitations(String userId) {
         requireUserId(userId);
+        claimEmailInvitations(userId);
         return groupInvitationRepository.findByInvitedUserIdAndStatus(userId, GroupInvitationStatus.PENDING)
                 .stream()
                 .map(this::buildInvitationResponse)
                 .toList();
+    }
+
+    /**
+     * Vincula a {@code userId} cualquier invitación por email pendiente que coincida con su
+     * dirección verificada. No reclama nada si el email todavía no está verificado, para que
+     * nadie se apropie de una invitación registrándose con un correo que no controla.
+     */
+    private void claimEmailInvitations(String userId) {
+        MapItUser user = userService.getByIdOrThrow(userId);
+        if (!user.isEmailVerified()) {
+            return;
+        }
+        List<GroupInvitation> unclaimed = groupInvitationRepository
+                .findByInvitedEmailAndStatus(normalizeEmail(user.getEmail()), GroupInvitationStatus.PENDING);
+        for (GroupInvitation invitation : unclaimed) {
+            invitation.setInvitedUserId(userId);
+            invitation.setInvitedEmail(null);
+            groupInvitationRepository.save(invitation);
+            log.info("Invitación por email reclamada invitationId={} userId={}", invitation.getId(), userId);
+        }
     }
 
     /**
@@ -338,7 +391,10 @@ public class GroupService {
 
         Group group = getGroupOrThrow(invitation.getGroupId());
         boolean isOrganizer = group.getOrganizerId().equals(requesterId);
-        boolean isInvitee = invitation.getInvitedUserId().equals(requesterId);
+        // Una invitación por email no reclamada no tiene invitado real todavía que también
+        // pueda cancelarla — solo el organizador.
+        boolean isInvitee = invitation.getInvitedUserId() != null
+                && invitation.getInvitedUserId().equals(requesterId);
         if (!isOrganizer && !isInvitee) {
             throw new ApiException("FORBIDDEN", "No puedes cancelar esta invitación", HttpStatus.FORBIDDEN);
         }
@@ -443,14 +499,57 @@ public class GroupService {
         return saved;
     }
 
+    /**
+     * Invita por email: si ya pertenece a un usuario registrado, delega en {@link #sendInvitation}
+     * (misma dedupe de ya-miembro/ya-invitado); si no, persiste una invitación sin
+     * {@code invitedUserId} y envía el correo de alta ({@code sendGroupSignupInvitationEmail}).
+     * Compartido por {@link #createGroup} (invitaciones iniciales) e {@link #inviteByEmail}.
+     */
+    private GroupInvitation sendInvitationByEmail(Group group, String requesterId, String rawEmail) {
+        String email = normalizeEmail(rawEmail);
+
+        Optional<MapItUser> existingUser = userService.findByEmail(email);
+        if (existingUser.isPresent()) {
+            return sendInvitation(group, requesterId, existingUser.get().getId());
+        }
+
+        if (groupInvitationRepository.existsByGroupIdAndInvitedEmailAndStatus(
+                group.getId(), email, GroupInvitationStatus.PENDING)) {
+            throw new ApiException("ALREADY_INVITED",
+                    "Ya se ha invitado a este email", HttpStatus.CONFLICT);
+        }
+
+        GroupInvitation invitation = new GroupInvitation();
+        invitation.setGroupId(group.getId());
+        invitation.setInvitedEmail(email);
+        invitation.setInvitedByUserId(requesterId);
+        invitation.setStatus(GroupInvitationStatus.PENDING);
+        invitation.setCreatedAt(Instant.now());
+        GroupInvitation saved = groupInvitationRepository.save(invitation);
+        log.info("Invitación por email persistida invitationId={} groupId={} — enviando email de alta...",
+                saved.getId(), group.getId());
+
+        MapItUser organizer = userService.getByIdOrThrow(requesterId);
+        notificationSender.sendGroupSignupInvitationEmail(email, group.getName(), organizer.getName());
+
+        return saved;
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
+    }
+
     private GroupResponse buildGroupResponse(Group group) {
         List<GroupMemberResponse> members = resolveMembers(group.getId());
         List<GroupResponse.PendingInvitee> pendingInvitees =
                 groupInvitationRepository.findByGroupIdAndStatus(group.getId(), GroupInvitationStatus.PENDING)
                         .stream()
                         .map(inv -> {
+                            if (inv.getInvitedUserId() == null) {
+                                return new GroupResponse.PendingInvitee(null, null, null, inv.getInvitedEmail());
+                            }
                             MapItUser u = userService.getByIdOrThrow(inv.getInvitedUserId());
-                            return new GroupResponse.PendingInvitee(u.getId(), u.getName(), u.getNick());
+                            return new GroupResponse.PendingInvitee(u.getId(), u.getName(), u.getNick(), null);
                         })
                         .toList();
         return groupMapper.toResponse(group, members, pendingInvitees);
@@ -458,10 +557,16 @@ public class GroupService {
 
     private GroupInvitationResponse buildInvitationResponse(GroupInvitation invitation) {
         Group group = getGroupOrThrow(invitation.getGroupId());
-        MapItUser invitedUser = userService.getByIdOrThrow(invitation.getInvitedUserId());
+        String invitedUserName = null;
+        String invitedUserNick = null;
+        if (invitation.getInvitedUserId() != null) {
+            MapItUser invitedUser = userService.getByIdOrThrow(invitation.getInvitedUserId());
+            invitedUserName = invitedUser.getName();
+            invitedUserNick = invitedUser.getNick();
+        }
         MapItUser invitedBy = userService.getByIdOrThrow(invitation.getInvitedByUserId());
         return groupInvitationMapper.toResponse(invitation, group,
-                invitedUser.getName(), invitedUser.getNick(),
+                invitedUserName, invitedUserNick,
                 invitedBy.getName(), resolveMembers(group.getId()));
     }
 

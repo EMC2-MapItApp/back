@@ -45,6 +45,20 @@ public interface NotificationSender {
             String invitationId);
 
     /**
+     * Invita por email a alguien que todavía no tiene cuenta en MapIt a registrarse, mencionando
+     * el grupo al que se le ha invitado. A diferencia de {@link #sendGroupInvitationEmail}, no
+     * lleva un enlace de aceptar/rechazar (no hay cuenta con la que autenticarse todavía) — la
+     * invitación se vincula sola a su cuenta en cuanto se registre y verifique el email (ver
+     * {@code GroupService#claimEmailInvitations}), y a partir de ahí aparece como cualquier otra
+     * invitación pendiente dentro de la aplicación.
+     *
+     * @param to            dirección de email invitada
+     * @param groupName     nombre del grupo al que se le invita
+     * @param invitedByName nombre de quien envía la invitación
+     */
+    void sendGroupSignupInvitationEmail(String to, String groupName, String invitedByName);
+
+    /**
      * Notifica al organizador de un grupo de un aviso enviado por uno de sus miembros.
      *
      * @param to            destino del organizador (hoy: dirección de email)

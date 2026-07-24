@@ -80,7 +80,7 @@ class GroupServiceTest {
 
     @Test
     void createGroup_conDatosValidos_creaGrupoConOrganizadorComoMiembro() {
-        CreateGroupRequest request = new CreateGroupRequest("Club", "Descripción", CATEGORY_ID, null);
+        CreateGroupRequest request = new CreateGroupRequest("Club", "Descripción", CATEGORY_ID, null, null);
 
         when(userService.getByIdOrThrow(ORGANIZER_ID)).thenReturn(organizador);
         when(mainCategoryRepository.existsById(CATEGORY_ID)).thenReturn(true);
@@ -104,7 +104,7 @@ class GroupServiceTest {
 
     @Test
     void createGroup_conCategoriaInexistente_lanzaApiException() {
-        CreateGroupRequest request = new CreateGroupRequest("Club", "Descripción", "cat-invalida", null);
+        CreateGroupRequest request = new CreateGroupRequest("Club", "Descripción", "cat-invalida", null, null);
 
         when(userService.getByIdOrThrow(ORGANIZER_ID)).thenReturn(organizador);
         when(mainCategoryRepository.existsById("cat-invalida")).thenReturn(false);
@@ -124,7 +124,7 @@ class GroupServiceTest {
     @Test
     void createGroup_conInviteUserIds_creaInvitacionesYEnviaEmails() {
         CreateGroupRequest request = new CreateGroupRequest(
-                "Club", "Descripción", CATEGORY_ID, List.of(MEMBER_ID, ORGANIZER_ID));
+                "Club", "Descripción", CATEGORY_ID, List.of(MEMBER_ID, ORGANIZER_ID), null);
 
         when(userService.getByIdOrThrow(ORGANIZER_ID)).thenReturn(organizador);
         when(userService.getByIdOrThrow(MEMBER_ID)).thenReturn(miembro);

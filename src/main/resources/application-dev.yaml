@@ -9,6 +9,9 @@ server:
   port: 8081
 
 spring:
+  output:
+    ansi:
+      enabled: ALWAYS  # forzado (no DETECT): garantiza color en la pestaña de Windows Terminal
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/mapit_db}
@@ -37,6 +40,9 @@ mapit:
     frontend-base-url: ${MAPIT_FRONTEND_URL:http://localhost:4200}
 
 logging:
+  pattern:
+    # Hora corta, nivel coloreado, logger abreviado en cian, separadores atenuados
+    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%-5level) %clr(---){faint} %clr(%-40.40logger{39}){cyan}%clr(:){faint} %msg%n%throwable"
   level:
     # Aplicación propia: DEBUG completo en dev
     emc.mapIt: DEBUG

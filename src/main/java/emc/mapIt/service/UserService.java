@@ -22,6 +22,7 @@ import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -202,6 +203,19 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
         return convertToDomain(user);
+    }
+
+    /**
+     * Busca un usuario por email exacto sin lanzar si no existe (a diferencia de
+     * {@link #getByEmailOrThrow(String)}, pensado para autenticación). Usado por el dominio
+     * Grupos para decidir si una invitación por email corresponde a alguien ya registrado.
+     *
+     * @param email email a buscar (case-insensitive)
+     * @return usuario encontrado, vacío si no existe
+     */
+    @Transactional(readOnly = true)
+    public Optional<MapItUser> findByEmail(String email) {
+        return userRepository.findByEmail(normalizeEmail(email)).map(this::convertToDomain);
     }
 
     /**

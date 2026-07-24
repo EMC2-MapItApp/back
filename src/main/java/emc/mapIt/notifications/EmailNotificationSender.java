@@ -35,6 +35,7 @@ public class EmailNotificationSender implements NotificationSender {
     private static final String TEMPLATE_PATH = "templates/email/verification-email.html";
     private static final String RESET_TEMPLATE_PATH = "templates/email/password-reset-email.html";
     private static final String GROUP_INVITATION_TEMPLATE_PATH = "templates/email/group-invitation-email.html";
+    private static final String GROUP_SIGNUP_INVITATION_TEMPLATE_PATH = "templates/email/group-signup-invitation-email.html";
     private static final String GROUP_ORGANIZER_NOTICE_TEMPLATE_PATH = "templates/email/group-organizer-notice-email.html";
 
     private final JavaMailSender mailSender;
@@ -166,6 +167,43 @@ public class EmailNotificationSender implements NotificationSender {
             throw new ApiException(
                     "MAIL_SEND_FAILED",
                     "No se pudo enviar el correo de invitación al grupo.",
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Envia el correo de invitación de alta a alguien sin cuenta todavía, con el enlace apuntando
+     * a la página {@code /register} del frontend (sin id de invitación: no hay cuenta con la que
+     * autenticarse todavía — a diferencia de {@link #sendGroupInvitationEmail}).
+     */
+    @Override
+    public void sendGroupSignupInvitationEmail(String to, String groupName, String invitedByName) {
+        log.info("Preparando email de invitación de alta a grupo: to={} groupName={}", to, groupName);
+
+        String registerLink = frontendBaseUrl + "/register";
+
+        String html = loadTemplate(GROUP_SIGNUP_INVITATION_TEMPLATE_PATH)
+                .replace("{{groupName}}", escapeHtml(groupName))
+                .replace("{{invitedByName}}", escapeHtml(invitedByName))
+                .replace("{{registerLink}}", registerLink);
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            helper.setTo(to);
+            helper.setFrom(fromAddress);
+            helper.setSubject("Te han invitado a un grupo en MapIt");
+            helper.setText(html, true);
+
+            log.debug("Enviando email de invitación de alta vía SMTP: to={} from={}", to, fromAddress);
+            mailSender.send(message);
+            log.info("Email de invitación de alta enviado correctamente: to={}", to);
+        } catch (MessagingException | MailException ex) {
+            log.error("Fallo enviando email de invitación de alta: to={} groupName={} causa={}: {}",
+                    to, groupName, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw new ApiException(
+                    "MAIL_SEND_FAILED",
+                    "No se pudo enviar el correo de invitación.",
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
