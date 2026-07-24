@@ -424,7 +424,7 @@ class GroupServiceTest {
 
     @Test
     void notifyOrganizer_comoMiembro_enviaEmailAlOrganizador() {
-        NotifyOrganizerRequest request = new NotifyOrganizerRequest("¿Cambiamos la hora de la próxima ruta?");
+        NotifyOrganizerRequest request = new NotifyOrganizerRequest("Horario", "¿Cambiamos la hora de la próxima ruta?");
 
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
         when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(true);
@@ -434,7 +434,7 @@ class GroupServiceTest {
         groupService.notifyOrganizer(MEMBER_ID, GROUP_ID, request);
 
         verify(notificationSender).sendGroupOrganizerNoticeEmail(
-                eq("org@test.com"), eq("Organizador"), eq("Club de Ciclismo"), eq("Miembro"), anyString());
+                eq("org@test.com"), eq("Organizador"), eq("Club de Ciclismo"), eq("Miembro"), anyString(), anyString());
     }
 
     @Test
@@ -443,10 +443,10 @@ class GroupServiceTest {
         when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, ORGANIZER_ID)).thenReturn(true);
 
         assertThatThrownBy(() -> groupService.notifyOrganizer(
-                ORGANIZER_ID, GROUP_ID, new NotifyOrganizerRequest("mensaje")))
+                ORGANIZER_ID, GROUP_ID, new NotifyOrganizerRequest("asunto", "mensaje")))
                 .isInstanceOf(ApiException.class);
 
-        verify(notificationSender, never()).sendGroupOrganizerNoticeEmail(any(), any(), any(), any(), any());
+        verify(notificationSender, never()).sendGroupOrganizerNoticeEmail(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -455,7 +455,7 @@ class GroupServiceTest {
         when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, "extraño")).thenReturn(false);
 
         assertThatThrownBy(() -> groupService.notifyOrganizer(
-                "extraño", GROUP_ID, new NotifyOrganizerRequest("mensaje")))
+                "extraño", GROUP_ID, new NotifyOrganizerRequest("asunto", "mensaje")))
                 .isInstanceOf(ApiException.class);
     }
 

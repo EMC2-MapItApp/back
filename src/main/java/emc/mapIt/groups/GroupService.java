@@ -444,8 +444,9 @@ public class GroupService {
         if (requesterId.equals(group.getOrganizerId())) {
             throw new ApiException("BAD_REQUEST", "Eres el organizador de este grupo", HttpStatus.BAD_REQUEST);
         }
-        if (request == null || request.message() == null || request.message().isBlank()) {
-            throw new ApiException("BAD_REQUEST", "El mensaje es obligatorio", HttpStatus.BAD_REQUEST);
+        if (request == null || request.subject() == null || request.subject().isBlank()
+                || request.message() == null || request.message().isBlank()) {
+            throw new ApiException("BAD_REQUEST", "El asunto y el mensaje son obligatorios", HttpStatus.BAD_REQUEST);
         }
 
         MapItUser requester = userService.getByIdOrThrow(requesterId);
@@ -453,9 +454,56 @@ public class GroupService {
 
         notificationSender.sendGroupOrganizerNoticeEmail(
                 organizer.getEmail(), organizer.getName(), group.getName(),
-                requester.getName(), request.message().trim());
+                requester.getName(), request.subject().trim(), request.message().trim());
 
         log.info("Aviso enviado al organizador groupId={} fromUserId={}", groupId, requesterId);
+    }
+
+    /**
+     * Difunde un mensaje del organizador a (una parte o) todos los miembros del grupo. Solo el
+     * organizador puede hacerlo.
+     *
+     * @param requesterId id del usuario autenticado
+     * @param groupId     id del grupo
+     * @param request     mensaje y destinatarios (vacío/{@code null} = todos los miembros)
+     */
+    public void contactMembers(String requesterId, String groupId, ContactMembersRequest request) {
+        requireUserId(requesterId);
+        Group group = getGroupOrThrow(groupId);
+        requireOrganizer(group, requesterId);
+
+        if (request == null || request.subject() == null || request.subject().isBlank()
+                || request.message() == null || request.message().isBlank()) {
+            throw new ApiException("BAD_REQUEST", "El asunto y el mensaje son obligatorios", HttpStatus.BAD_REQUEST);
+        }
+
+        List<GroupMember> members = groupMemberRepository.findByGroupId(groupId).stream()
+                .filter(member -> !member.getUserId().equals(requesterId))
+                .toList();
+
+        List<String> recipientUserIds = request.recipientUserIds();
+        if (recipientUserIds != null && !recipientUserIds.isEmpty()) {
+            Set<String> requested = new LinkedHashSet<>(recipientUserIds);
+            members = members.stream().filter(member -> requested.contains(member.getUserId())).toList();
+        }
+
+        if (members.isEmpty()) {
+            throw new ApiException("BAD_REQUEST", "No hay destinatarios seleccionados", HttpStatus.BAD_REQUEST);
+        }
+
+        MapItUser organizer = userService.getByIdOrThrow(requesterId);
+        String subject = request.subject().trim();
+        String message = request.message().trim();
+
+        members.forEach(member -> {
+            MapItUser recipient = userService.getByIdOrThrow(member.getUserId());
+            notificationSender.sendGroupBroadcastEmail(
+                    recipient.getEmail(), recipient.getName(), group.getName(), organizer.getName(),
+                    subject, message);
+        });
+
+        log.info("Mensaje difundido a miembros groupId={} organizerId={} destinatarios={}",
+                groupId, requesterId, members.size());
     }
 
     // ── Helpers privados ─────────────────────────────────────────────────────

@@ -226,6 +226,23 @@ public class GroupController {
     }
 
     /**
+     * Difunde un mensaje del organizador a (una parte o) todos los miembros del grupo.
+     *
+     * @param id            identificador del grupo
+     * @param request       mensaje y destinatarios (vacío/{@code null} = todos los miembros)
+     * @param authorization cabecera Authorization con JWT
+     * @return sin contenido
+     */
+    @PostMapping("/{id}/contact-members")
+    public ResponseEntity<Void> contactMembers(@PathVariable String id,
+            @Valid @RequestBody ContactMembersRequest request,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Solicitud de difusión a miembros groupId={}", id);
+        groupService.contactMembers(authService.requireUserId(authorization), id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * Lista las invitaciones pendientes del usuario autenticado.
      *
      * @param authorization cabecera Authorization con JWT
