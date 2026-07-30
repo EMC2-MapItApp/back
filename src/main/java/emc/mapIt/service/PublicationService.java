@@ -18,6 +18,7 @@ import emc.mapIt.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,7 @@ public class PublicationService {
 
     private static final Logger log = LoggerFactory.getLogger(PublicationService.class);
     private static final ZoneId MADRID_ZONE = ZoneId.of("Europe/Madrid");
+    private static final int EXPIRED_RETENTION_MONTHS = 3;
 
     private final PublicationRepository publicationRepository;
     private final PublicationEnrollmentRepository publicationEnrollmentRepository;
@@ -312,6 +314,29 @@ public class PublicationService {
         expired.forEach(publication -> publication.setActive(false));
         publicationRepository.saveAll(expired);
         log.debug("Se han marcado {} publicaciones como finalizadas", expired.size());
+    }
+
+    /**
+     * Elimina definitivamente las publicaciones caducadas hace más de
+     * {@value #EXPIRED_RETENTION_MONTHS} meses (endDate vencida; las promociones
+     * indefinidas con endDate null nunca se ven afectadas).
+     * <p>
+     * Corre diariamente vía {@code @Scheduled}; no depende de que
+     * {@link #expireFinishedPublications()} haya marcado antes la publicación
+     * como inactiva, ya que ambos jobs se basan directamente en endDate.
+     * </p>
+     */
+    @Scheduled(cron = "0 0 4 * * *", zone = "Europe/Madrid")
+    public void deleteExpiredPublications() {
+        ZonedDateTime cutoff = ZonedDateTime.now(MADRID_ZONE).minusMonths(EXPIRED_RETENTION_MONTHS);
+        List<Publication> expired = publicationRepository.findExpiredSince(cutoff);
+        if (expired.isEmpty()) {
+            return;
+        }
+
+        publicationRepository.deleteAll(expired);
+        log.info("Eliminadas {} publicaciones caducadas hace más de {} meses", expired.size(),
+                EXPIRED_RETENTION_MONTHS);
     }
 
     private Integer resolveMaxSlots(Publication publication) {
