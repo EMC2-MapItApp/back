@@ -33,6 +33,14 @@ public interface PublicationRepository extends MongoRepository<Publication, Stri
     List<Publication> findByActiveTrueAndEndDateBefore(ZonedDateTime dateTime);
 
     /**
+     * Busca publicaciones caducadas (con endDate) cuya fecha de fin es anterior al corte dado.
+     * Excluye explícitamente endDate null (promociones indefinidas) porque en BSON null
+     * se considera "menor" que cualquier fecha y coincidiría con un simple $lt.
+     */
+    @Query("{ 'endDate': { $ne: null, $lt: ?0 } }")
+    List<Publication> findExpiredSince(ZonedDateTime cutoff);
+
+    /**
      * Busca publicaciones por tipo.
      */
     List<Publication> findByPublicationType(PublicationType publicationType);

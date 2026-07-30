@@ -135,6 +135,18 @@ Dos matices de flujo que no son evidentes a primera vista:
 referencia (categorías, un usuario admin) al arrancar — revísalos antes de asumir que un MongoDB
 recién creado está vacío.
 
+**Ciclo de vida de publicaciones**: `PublicationService` aplica dos mecanismos independientes
+sobre `endDate` (ninguno depende del otro):
+(1) expiración *suave* (`expireFinishedPublications`, privado): marca `active=false` de forma
+perezosa en cada lectura pública cuando `endDate` ya pasó — no borra nada;
+(2) borrado *duro* (`deleteExpiredPublications`, `@Scheduled` diario a las 4:00 hora de Madrid,
+primer uso de `@Scheduled`/`@EnableScheduling` en el proyecto — habilitado en
+`MapItApplication`): elimina definitivamente las publicaciones cuya `endDate` quedó atrás hace más
+de 3 meses, vía `PublicationRepository.findExpiredSince`. Las promociones con `endDate` null
+(indefinidas) quedan siempre excluidas de ambos mecanismos — la consulta Mongo lo hace explícito
+con `$ne: null` porque en el orden de comparación BSON `null` es "menor" que cualquier fecha y un
+simple `$lt` lo capturaría por error.
+
 **Perfiles de configuración**: `application.yaml` tiene los valores por defecto independientes de
 entorno (Jackson, defaults del proveedor de geo); `application-dev.yaml` /
 `application-prod.yaml` tienen la URI de Mongo, el secreto JWT y el puerto por entorno, activados

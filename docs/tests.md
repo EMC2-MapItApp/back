@@ -15,7 +15,8 @@ src/test/java/emc/mapIt/
 │   ├── AuthServiceTest.java               ← unitario con Mockito
 │   ├── PasswordPolicyServiceTest.java     ← unitario puro (Fase 1 auth)
 │   ├── EmailVerificationServiceTest.java  ← unitario con Mockito (Fase 1 auth)
-│   └── PasswordResetServiceTest.java      ← unitario con Mockito (Fase 1 auth)
+│   ├── PasswordResetServiceTest.java      ← unitario con Mockito (Fase 1 auth)
+│   └── PublicationServiceTest.java        ← unitario con Mockito (borrado automático de caducadas)
 ├── controller/
 │   └── AuthControllerTest.java     ← capa web con MockMvc
 └── notifications/
@@ -167,6 +168,22 @@ Dependencias mockeadas: `PasswordResetTokenRepository`, `UserRepository`, `HashS
 
 ---
 
+## PublicationServiceTest
+
+**Tipo:** Unitario con Mockito.
+**Clase bajo test:** `emc.mapIt.service.PublicationService`
+
+Dependencias mockeadas: `PublicationRepository`, `PublicationEnrollmentRepository`, `UserRepository`, `LocationTypeRepository`, `PublicationMapper`.
+
+Cubre el job programado (`@Scheduled`) que borra definitivamente las publicaciones caducadas hace más de 3 meses (según `endDate`, no fecha de creación; las promociones indefinidas con `endDate` null nunca se ven afectadas — ver `PublicationRepository.findExpiredSince`).
+
+| Método de test | Descripción |
+|---|---|
+| `deleteExpiredPublications_conCaducadasHaceMasDeTresMeses_lasElimina` | Con publicaciones caducadas hace >3 meses, calcula el corte correcto y llama a `deleteAll` |
+| `deleteExpiredPublications_sinCaducadas_noBorraNada` | Sin resultados de `findExpiredSince`, no invoca `deleteAll` |
+
+---
+
 ## AuthControllerTest
 
 **Tipo:** Capa web con `@WebMvcTest` y `MockMvc`.
@@ -302,7 +319,7 @@ Dependencias mockeadas con `@MockBean`: `NotificationService`, `NotificationMapp
 ./mvnw test
 
 # Solo los tests de servicios
-./mvnw test -Dtest="HashServiceTest,JwtServiceTest,AuthServiceTest,PasswordPolicyServiceTest,EmailVerificationServiceTest,PasswordResetServiceTest"
+./mvnw test -Dtest="HashServiceTest,JwtServiceTest,AuthServiceTest,PasswordPolicyServiceTest,EmailVerificationServiceTest,PasswordResetServiceTest,PublicationServiceTest"
 
 # Solo los tests de controladores
 ./mvnw test -Dtest="AuthControllerTest"
