@@ -78,6 +78,30 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/unread")
+    public ResponseEntity<Void> markUnread(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        String userId = authService.requireUserId(authorization);
+        notificationService.markUnread(userId, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        String userId = authService.requireUserId(authorization);
+        notificationService.delete(userId, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAll(
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        String userId = authService.requireUserId(authorization);
+        notificationService.deleteAll(userId);
+        return ResponseEntity.noContent().build();
+    }
+
     /** Clave pública VAPID que el frontend usa para suscribirse al {@code PushManager} del navegador. */
     @GetMapping("/push/public-key")
     public Map<String, String> pushPublicKey() {
