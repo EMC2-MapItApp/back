@@ -126,6 +126,26 @@ public class NotificationService {
         notificationRepository.saveAll(unread);
     }
 
+    public void markUnread(String userId, String notificationId) {
+        Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Notificación no encontrada", HttpStatus.NOT_FOUND));
+        if (notification.isRead()) {
+            notification.setRead(false);
+            notification.setReadAt(null);
+            notificationRepository.save(notification);
+        }
+    }
+
+    public void delete(String userId, String notificationId) {
+        Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Notificación no encontrada", HttpStatus.NOT_FOUND));
+        notificationRepository.delete(notification);
+    }
+
+    public void deleteAll(String userId) {
+        notificationRepository.deleteByUserId(userId);
+    }
+
     // ── Suscripciones push ───────────────────────────────────────────────────────
 
     public void registerSubscription(String userId, PushSubscriptionRequest request) {
