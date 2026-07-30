@@ -159,32 +159,32 @@ public class UserService {
      *
      * @param email email a buscar (case-insensitive)
      * @return usuario encontrado
-     * @throws ApiException con código UNAUTHORIZED si no existe
+     * @throws ApiException con código INVALID_CREDENTIALS si no existe
      */
     @Transactional(readOnly = true)
     public MapItUser getByEmailOrThrow(String email) {
         String normalizedEmail = normalizeEmail(email);
         User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new ApiException("UNAUTHORIZED", "Credenciales invalidas", HttpStatus.UNAUTHORIZED));
+                .orElseThrow(() -> new ApiException("INVALID_CREDENTIALS", "Credenciales invalidas", HttpStatus.UNAUTHORIZED));
         return convertToDomain(user);
     }
 
     /**
      * Busca un usuario por nick normalizado para autenticación.
      * <p>
-     * Devuelve UNAUTHORIZED si el nick no existe (mismo patrón anti-enumeración que
+     * Devuelve INVALID_CREDENTIALS si el nick no existe (mismo patrón anti-enumeración que
      * {@link #getByEmailOrThrow(String)}: no se distingue de una password inválida).
      * </p>
      *
      * @param nick nick a buscar (case-sensitive, sin el prefijo {@code @})
      * @return usuario encontrado
-     * @throws ApiException con código UNAUTHORIZED si no existe
+     * @throws ApiException con código INVALID_CREDENTIALS si no existe
      */
     @Transactional(readOnly = true)
     public MapItUser getByNickOrThrow(String nick) {
         String normalizedNick = normalizeNick(nick);
         User user = userRepository.findByNick(normalizedNick)
-                .orElseThrow(() -> new ApiException("UNAUTHORIZED", "Credenciales invalidas", HttpStatus.UNAUTHORIZED));
+                .orElseThrow(() -> new ApiException("INVALID_CREDENTIALS", "Credenciales invalidas", HttpStatus.UNAUTHORIZED));
         return convertToDomain(user);
     }
 
@@ -685,7 +685,7 @@ public class UserService {
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Usuario no encontrado", HttpStatus.NOT_FOUND));
 
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new ApiException("UNAUTHORIZED", "La contraseña actual no es correcta", HttpStatus.UNAUTHORIZED);
+            throw new ApiException("WRONG_CURRENT_PASSWORD", "La contraseña actual no es correcta", HttpStatus.UNAUTHORIZED);
         }
 
         passwordPolicyService.validate(newPassword, java.util.List.of(

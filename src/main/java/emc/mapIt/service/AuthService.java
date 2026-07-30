@@ -107,7 +107,7 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             log.warn("Intento de login fallido para identifier={}", request.identifier());
-            throw new ApiException("UNAUTHORIZED", "Credenciales invalidas", HttpStatus.UNAUTHORIZED);
+            throw new ApiException("INVALID_CREDENTIALS", "Credenciales invalidas", HttpStatus.UNAUTHORIZED);
         }
 
         // Va despues de validar la contraseña: el usuario ya demostro que la conoce,

@@ -199,7 +199,7 @@ class AuthServiceTest {
         AuthLoginRequest request = new AuthLoginRequest("@noexiste", "pass1234");
 
         when(userService.getByNickOrThrow("noexiste")).thenThrow(
-                new ApiException("UNAUTHORIZED", "Credenciales invalidas", org.springframework.http.HttpStatus.UNAUTHORIZED));
+                new ApiException("INVALID_CREDENTIALS", "Credenciales invalidas", org.springframework.http.HttpStatus.UNAUTHORIZED));
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(ApiException.class)
