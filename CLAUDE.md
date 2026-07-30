@@ -102,16 +102,35 @@ si el email existe (404 si no) — decisión de producto deliberada, ya que `reg
 vía 409 CONFLICT y no hay anti-enumeración real que proteger aquí.
 
 **Notificaciones**: `NotificationService` (en `notifications/`) es el orquestador que
-`GroupService` invoca para sus 3 eventos con push/in-app (invitación a grupo, aviso al
+`GroupService` invoca para sus 3 eventos con email/in-app/push (invitación a grupo, aviso al
 organizador, difusión a miembros — la invitación por email a alguien sin cuenta se queda
-solo-email, no hay `userId` al que asociar nada más). Por cada evento hace tres cosas en orden:
-(1) llama al email existente vía `NotificationSender` — si falla, lanza `ApiException` y aborta,
-comportamiento sin cambios; (2) persiste una `Notification` in-app (colección `notifications`,
-fuente de verdad del centro de notificaciones — sobrevive aunque el push falle o el permiso esté
-denegado); (3) hace fan-out del push a cada `PushSubscription` del usuario vía `PushSender`
-(adaptador `WebPushSender`, protocolo Web Push/VAPID) — el push es *best-effort*: un fallo aquí
-(`PushDeliveryException`) se loguea y no aborta el evento; una suscripción caducada
-(`PushSubscriptionExpiredException`, el push service responde 404/410) se borra sola.
+solo-email, no hay `userId` al que asociar nada más ni preferencia que consultar). Por cada
+evento hace tres cosas en orden: (1) si el destinatario tiene el email de ese `NotificationType`
+activado (`NotificationPreference`, ver debajo — por defecto sí), llama al email vía
+`NotificationSender`; si falla, lanza `ApiException` y aborta, comportamiento sin cambios cuando
+se intenta; (2) persiste una `Notification` in-app (colección `notifications`, fuente de verdad
+del centro de notificaciones) **siempre, sin condición** — el in-app no es configurable, a
+diferencia del email; (3) si `mapit.push.enabled` lo permite (ver debajo), hace fan-out del push
+a cada `PushSubscription` del usuario vía `PushSender` (adaptador `WebPushSender`, protocolo Web
+Push/VAPID) — el push es *best-effort*: un fallo aquí (`PushDeliveryException`) se loguea y no
+aborta el evento; una suscripción caducada (`PushSubscriptionExpiredException`, el push service
+responde 404/410) se borra sola.
+
+**Preferencias de notificación y apagado del push (temporal)**: solo el canal **email** es
+configurable por tipo — `NotificationPreference` (colección `notification_preferences`, una por
+usuario) guarda únicamente los `NotificationType` que el usuario ha **silenciado**
+(`mutedEmailTypes`); un tipo ausente (o el documento entero ausente) se considera activado, para
+que un tipo nuevo que se añada al enum quede activado por defecto sin migrar datos — mismo
+criterio que `User.favoriteLocationTypeIds`. Endpoints en `NotificationController`:
+`GET /api/v1/notifications/preferences` y `PATCH /api/v1/notifications/preferences/{type}`. El
+push nativo, en cambio, **no** es una preferencia de usuario: está desactivado globalmente de
+forma temporal vía el flag `mapit.push.enabled: false` (en `application.yaml`, no por entorno) —
+`NotificationService.dispatch` sigue persistiendo el in-app pero omite el fan-out; en el
+frontend, `app.config.ts` bindea `PUSH_PROVIDER` a `NoopPushProvider` en vez de
+`WebPushProvider`, así que tampoco se registra `push-sw.js` ni se pide permiso. Revertir el
+apagado es volver `mapit.push.enabled` a `true` y el binding a `WebPushProvider` — ninguna otra
+pieza (`WebPushSender`, `PushSender`, `push-sw.js`, `PushNotificationService`) se ha tocado ni
+eliminado.
 
 Dos matices de flujo que no son evidentes a primera vista:
 

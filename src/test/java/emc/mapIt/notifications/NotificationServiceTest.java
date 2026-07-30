@@ -29,6 +29,7 @@ class NotificationServiceTest {
     @Mock private PushSender pushSender;
     @Mock private NotificationRepository notificationRepository;
     @Mock private PushSubscriptionRepository pushSubscriptionRepository;
+    @Mock private NotificationPreferenceRepository notificationPreferenceRepository;
 
     private NotificationService notificationService;
 
@@ -40,11 +41,19 @@ class NotificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationService(
-                notificationSender, pushSender, notificationRepository, pushSubscriptionRepository);
+        // pushEnabled=true en la mayoría de tests para seguir verificando el mecanismo de
+        // fan-out/expiración/best-effort tal cual; los tests específicos del kill-switch
+        // reconstruyen el service con pushEnabled=false.
+        notificationService = newService(true);
 
         invited = new MapItUser(INVITED_ID, "Invitado", "invitado@test.com", "hash", UserType.PARTICULAR);
         organizer = new MapItUser(ORGANIZER_ID, "Organizador", "org@test.com", "hash", UserType.PARTICULAR);
+    }
+
+    private NotificationService newService(boolean pushEnabled) {
+        return new NotificationService(
+                notificationSender, pushSender, notificationRepository, pushSubscriptionRepository,
+                notificationPreferenceRepository, pushEnabled);
     }
 
     // ── notifyGroupInvitation ────────────────────────────────────
@@ -100,6 +109,31 @@ class NotificationServiceTest {
         notificationService.notifyGroupInvitation(invited, "Club", organizer, "inv-1");
 
         verify(pushSubscriptionRepository, never()).deleteByEndpoint(anyString());
+        verify(notificationRepository).save(any(Notification.class));
+    }
+
+    @Test
+    void notifyGroupInvitation_conPushDeshabilitadoGlobalmente_persisteInAppPeroNoIntentaPush() {
+        notificationService = newService(false);
+
+        notificationService.notifyGroupInvitation(invited, "Club", organizer, "inv-1");
+
+        verify(notificationRepository).save(any(Notification.class));
+        verify(pushSubscriptionRepository, never()).findByUserId(anyString());
+        verify(pushSender, never()).send(any(), any());
+    }
+
+    @Test
+    void notifyGroupInvitation_conTipoSilenciadoPorElUsuario_noEnviaEmailPeroSiguePersistiendoInApp() {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId(INVITED_ID);
+        preference.setMutedEmailTypes(new java.util.HashSet<>(List.of(NotificationType.GROUP_INVITATION)));
+        when(notificationPreferenceRepository.findByUserId(INVITED_ID)).thenReturn(Optional.of(preference));
+        when(pushSubscriptionRepository.findByUserId(INVITED_ID)).thenReturn(List.of());
+
+        notificationService.notifyGroupInvitation(invited, "Club", organizer, "inv-1");
+
+        verify(notificationSender, never()).sendGroupInvitationEmail(any(), any(), any(), any(), any());
         verify(notificationRepository).save(any(Notification.class));
     }
 
@@ -208,6 +242,61 @@ class NotificationServiceTest {
         notificationService.unregisterSubscription("https://push.example.com/x");
 
         verify(pushSubscriptionRepository).deleteByEndpoint("https://push.example.com/x");
+    }
+
+    // ── Preferencias de email por tipo ───────────────────────────
+
+    @Test
+    void getPreferences_sinDocumentoPrevio_devuelveTodosLosTiposActivados() {
+        when(notificationPreferenceRepository.findByUserId(INVITED_ID)).thenReturn(Optional.empty());
+
+        List<NotificationPreferenceResponse> preferences = notificationService.getPreferences(INVITED_ID);
+
+        assertThat(preferences).hasSize(NotificationType.values().length);
+        assertThat(preferences).allMatch(NotificationPreferenceResponse::emailEnabled);
+    }
+
+    @Test
+    void getPreferences_conTipoSilenciado_loDevuelveDesactivadoYElRestoActivados() {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId(INVITED_ID);
+        preference.setMutedEmailTypes(new java.util.HashSet<>(List.of(NotificationType.GROUP_BROADCAST)));
+        when(notificationPreferenceRepository.findByUserId(INVITED_ID)).thenReturn(Optional.of(preference));
+
+        List<NotificationPreferenceResponse> preferences = notificationService.getPreferences(INVITED_ID);
+
+        assertThat(preferences)
+                .filteredOn(p -> p.type() == NotificationType.GROUP_BROADCAST)
+                .allMatch(p -> !p.emailEnabled());
+        assertThat(preferences)
+                .filteredOn(p -> p.type() != NotificationType.GROUP_BROADCAST)
+                .allMatch(NotificationPreferenceResponse::emailEnabled);
+    }
+
+    @Test
+    void updateEmailPreference_desactivarSinDocumentoPrevio_creaUnoNuevoConElTipoSilenciado() {
+        when(notificationPreferenceRepository.findByUserId(INVITED_ID)).thenReturn(Optional.empty());
+
+        notificationService.updateEmailPreference(INVITED_ID, NotificationType.GROUP_INVITATION, false);
+
+        ArgumentCaptor<NotificationPreference> captor = ArgumentCaptor.forClass(NotificationPreference.class);
+        verify(notificationPreferenceRepository).save(captor.capture());
+        assertThat(captor.getValue().getUserId()).isEqualTo(INVITED_ID);
+        assertThat(captor.getValue().getMutedEmailTypes()).containsExactly(NotificationType.GROUP_INVITATION);
+    }
+
+    @Test
+    void updateEmailPreference_reactivarUnTipoYaSilenciado_loQuitaDelConjunto() {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId(INVITED_ID);
+        preference.setMutedEmailTypes(new java.util.HashSet<>(List.of(NotificationType.GROUP_INVITATION)));
+        when(notificationPreferenceRepository.findByUserId(INVITED_ID)).thenReturn(Optional.of(preference));
+
+        notificationService.updateEmailPreference(INVITED_ID, NotificationType.GROUP_INVITATION, true);
+
+        ArgumentCaptor<NotificationPreference> captor = ArgumentCaptor.forClass(NotificationPreference.class);
+        verify(notificationPreferenceRepository).save(captor.capture());
+        assertThat(captor.getValue().getMutedEmailTypes()).isEmpty();
     }
 
     // ── Fixtures ─────────────────────────────────────────────────
