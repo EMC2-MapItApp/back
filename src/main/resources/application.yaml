@@ -27,6 +27,11 @@ mapit:
     # llega en segundos y el usuario suele abrirlo de inmediato)
     reset-ttl-minutes: 15
   push:
+    # Interruptor global de producto (no de entorno, por eso vive en la base y no en
+    # dev/prod): desactiva temporalmente el envío de push nativo sin tocar código ni borrar el
+    # PushSender/WebPushSender. El registro/baja de suscripciones sigue funcionando; solo se
+    # omite el fan-out en NotificationService.dispatch. Revertir es volver esto a `true`.
+    enabled: false
     vapid:
       # Identidad de contacto exigida por el protocolo VAPID (RFC 8292) — el push service del
       # navegador puede usarla para contactar al emisor si abusa del canal. Las claves

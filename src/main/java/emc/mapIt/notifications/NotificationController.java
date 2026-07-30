@@ -124,4 +124,21 @@ public class NotificationController {
         notificationService.unregisterSubscription(request.endpoint());
         return ResponseEntity.noContent().build();
     }
+
+    /** Estado de la preferencia de email de cada tipo de notificación para el usuario autenticado. */
+    @GetMapping("/preferences")
+    public List<NotificationPreferenceResponse> preferences(
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        String userId = authService.requireUserId(authorization);
+        return notificationService.getPreferences(userId);
+    }
+
+    @PatchMapping("/preferences/{type}")
+    public ResponseEntity<Void> updatePreference(@PathVariable NotificationType type,
+            @Valid @RequestBody UpdateNotificationPreferenceRequest request,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        String userId = authService.requireUserId(authorization);
+        notificationService.updateEmailPreference(userId, type, request.emailEnabled());
+        return ResponseEntity.noContent().build();
+    }
 }

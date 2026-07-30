@@ -139,4 +139,42 @@ class NotificationControllerTest {
 
         verify(notificationService).unregisterSubscription("https://push.example.com/abc");
     }
+
+    @Test
+    void preferences_devuelveElEstadoDeCadaTipo() throws Exception {
+        when(authService.requireUserId(any())).thenReturn(USER_ID);
+        when(notificationService.getPreferences(USER_ID)).thenReturn(List.of(
+                new NotificationPreferenceResponse(NotificationType.GROUP_INVITATION, true),
+                new NotificationPreferenceResponse(NotificationType.GROUP_BROADCAST, false)));
+
+        mockMvc.perform(get("/api/v1/notifications/preferences"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].type").value("GROUP_INVITATION"))
+                .andExpect(jsonPath("$[0].emailEnabled").value(true))
+                .andExpect(jsonPath("$[1].type").value("GROUP_BROADCAST"))
+                .andExpect(jsonPath("$[1].emailEnabled").value(false));
+    }
+
+    @Test
+    void updatePreference_desactivaElEmailDeUnTipo() throws Exception {
+        when(authService.requireUserId(any())).thenReturn(USER_ID);
+        String body = """
+                {"emailEnabled":false}
+                """;
+
+        mockMvc.perform(patch("/api/v1/notifications/preferences/GROUP_BROADCAST")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNoContent());
+
+        verify(notificationService).updateEmailPreference(USER_ID, NotificationType.GROUP_BROADCAST, false);
+    }
+
+    @Test
+    void updatePreference_sinEmailEnabled_devuelve400() throws Exception {
+        mockMvc.perform(patch("/api/v1/notifications/preferences/GROUP_BROADCAST")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
 }

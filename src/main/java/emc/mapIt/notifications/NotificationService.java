@@ -4,25 +4,31 @@ import emc.mapIt.domain.MapItUser;
 import emc.mapIt.exception.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Orquesta, por evento de negocio, los canales de notificación aplicables: email (
- * {@link NotificationSender}, sin cambios de comportamiento), centro in-app persistido (
- * {@link Notification}) y push nativo del SO ({@link PushSender}). Es la pieza que sustituye el
- * uso directo de {@link NotificationSender} en {@code GroupService} — el dominio Grupos deja de
- * conocer qué canales existen, solo invoca "notifica este evento".
+ * {@link NotificationSender}), centro in-app persistido ({@link Notification}) y push nativo del
+ * SO ({@link PushSender}). Es la pieza que sustituye el uso directo de {@link NotificationSender}
+ * en {@code GroupService} — el dominio Grupos deja de conocer qué canales existen, solo invoca
+ * "notifica este evento".
  * <p>
- * El email es el único canal crítico: si falla, {@link EmailNotificationSender} lanza
- * {@link ApiException} y el caso de uso de negocio se aborta, igual que antes de este cambio. El
- * centro in-app y el push son best-effort — un fallo de push nunca debe impedir que la
- * invitación/aviso/difusión se considere enviada.
+ * El email es condicional a la preferencia por tipo del destinatario ({@link
+ * NotificationPreference}, ver {@link #isEmailEnabled}), pero sigue siendo el único canal crítico
+ * cuando se intenta: si falla, {@link EmailNotificationSender} lanza {@link ApiException} y el
+ * caso de uso de negocio se aborta, igual que antes de este cambio. El centro in-app **no** es
+ * configurable — se persiste siempre, sin excepción. El push es best-effort y además se apaga
+ * globalmente vía {@code mapit.push.enabled} (no es una preferencia por usuario, es un
+ * interruptor de producto) — un fallo o apagado de push nunca debe impedir que la invitación/
+ * aviso/difusión se considere enviada.
  * </p>
  */
 @Service
@@ -37,24 +43,32 @@ public class NotificationService {
     private final PushSender pushSender;
     private final NotificationRepository notificationRepository;
     private final PushSubscriptionRepository pushSubscriptionRepository;
+    private final NotificationPreferenceRepository notificationPreferenceRepository;
+    private final boolean pushEnabled;
 
     public NotificationService(
             NotificationSender notificationSender,
             PushSender pushSender,
             NotificationRepository notificationRepository,
-            PushSubscriptionRepository pushSubscriptionRepository) {
+            PushSubscriptionRepository pushSubscriptionRepository,
+            NotificationPreferenceRepository notificationPreferenceRepository,
+            @Value("${mapit.push.enabled:true}") boolean pushEnabled) {
         this.notificationSender = notificationSender;
         this.pushSender = pushSender;
         this.notificationRepository = notificationRepository;
         this.pushSubscriptionRepository = pushSubscriptionRepository;
+        this.notificationPreferenceRepository = notificationPreferenceRepository;
+        this.pushEnabled = pushEnabled;
     }
 
     // ── Eventos de negocio (dominio Grupos) ─────────────────────────────────────
 
     /** Invitación a un grupo, a un usuario ya registrado. */
     public void notifyGroupInvitation(MapItUser invited, String groupName, MapItUser invitedBy, String invitationId) {
-        notificationSender.sendGroupInvitationEmail(
-                invited.getEmail(), invited.getName(), groupName, invitedBy.getName(), invitationId);
+        if (isEmailEnabled(invited.getId(), NotificationType.GROUP_INVITATION)) {
+            notificationSender.sendGroupInvitationEmail(
+                    invited.getEmail(), invited.getName(), groupName, invitedBy.getName(), invitationId);
+        }
 
         dispatch(invited.getId(), NotificationType.GROUP_INVITATION,
                 "Invitación a " + groupName,
@@ -74,8 +88,10 @@ public class NotificationService {
     /** Aviso de un miembro al organizador del grupo. */
     public void notifyGroupOrganizerNotice(MapItUser organizer, String groupName, MapItUser fromUser,
             String subject, String message) {
-        notificationSender.sendGroupOrganizerNoticeEmail(
-                organizer.getEmail(), organizer.getName(), groupName, fromUser.getName(), subject, message);
+        if (isEmailEnabled(organizer.getId(), NotificationType.GROUP_ORGANIZER_NOTICE)) {
+            notificationSender.sendGroupOrganizerNoticeEmail(
+                    organizer.getEmail(), organizer.getName(), groupName, fromUser.getName(), subject, message);
+        }
 
         dispatch(organizer.getId(), NotificationType.GROUP_ORGANIZER_NOTICE,
                 "Aviso en " + groupName,
@@ -86,8 +102,10 @@ public class NotificationService {
     /** Difusión del organizador a un miembro del grupo (se invoca una vez por destinatario). */
     public void notifyGroupBroadcast(MapItUser recipient, String groupName, MapItUser organizer,
             String subject, String message) {
-        notificationSender.sendGroupBroadcastEmail(
-                recipient.getEmail(), recipient.getName(), groupName, organizer.getName(), subject, message);
+        if (isEmailEnabled(recipient.getId(), NotificationType.GROUP_BROADCAST)) {
+            notificationSender.sendGroupBroadcastEmail(
+                    recipient.getEmail(), recipient.getName(), groupName, organizer.getName(), subject, message);
+        }
 
         dispatch(recipient.getId(), NotificationType.GROUP_BROADCAST,
                 groupName + ": " + subject,
@@ -178,9 +196,44 @@ public class NotificationService {
         pushSubscriptionRepository.deleteByEndpoint(endpoint);
     }
 
+    // ── Preferencias de email por tipo ───────────────────────────────────────────
+
+    /** Estado de la preferencia de email de cada {@link NotificationType} para el usuario. */
+    public List<NotificationPreferenceResponse> getPreferences(String userId) {
+        return Arrays.stream(NotificationType.values())
+                .map(type -> new NotificationPreferenceResponse(type, isEmailEnabled(userId, type)))
+                .toList();
+    }
+
+    /** Activa/desactiva el email de un {@link NotificationType} concreto para el usuario. */
+    public void updateEmailPreference(String userId, NotificationType type, boolean enabled) {
+        NotificationPreference preference = notificationPreferenceRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    NotificationPreference created = new NotificationPreference();
+                    created.setUserId(userId);
+                    return created;
+                });
+        if (enabled) {
+            preference.getMutedEmailTypes().remove(type);
+        } else {
+            preference.getMutedEmailTypes().add(type);
+        }
+        notificationPreferenceRepository.save(preference);
+    }
+
+    /** Un tipo ausente de {@code mutedEmailTypes} (o sin documento de preferencias) está activado por defecto. */
+    private boolean isEmailEnabled(String userId, NotificationType type) {
+        return notificationPreferenceRepository.findByUserId(userId)
+                .map(preference -> !preference.getMutedEmailTypes().contains(type))
+                .orElse(true);
+    }
+
     // ── Helpers privados ─────────────────────────────────────────────────────────
 
-    /** Persiste la notificación in-app y hace fan-out del push a todas las suscripciones del usuario. */
+    /**
+     * Persiste la notificación in-app (siempre, sin condición) y, si {@code mapit.push.enabled}
+     * lo permite, hace fan-out del push a todas las suscripciones del usuario.
+     */
     private void dispatch(String userId, NotificationType type, String title, String body, String link) {
         Notification notification = new Notification();
         notification.setUserId(userId);
@@ -191,6 +244,10 @@ public class NotificationService {
         notification.setRead(false);
         notification.setCreatedAt(Instant.now());
         notificationRepository.save(notification);
+
+        if (!pushEnabled) {
+            return;
+        }
 
         PushPayload payload = new PushPayload(title, body, link);
         List<PushSubscription> subscriptions = pushSubscriptionRepository.findByUserId(userId);
