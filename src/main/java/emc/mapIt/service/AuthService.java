@@ -151,6 +151,23 @@ public class AuthService {
     }
 
     /**
+     * Como {@link #requireUserId}, pero devuelve {@code null} en vez de lanzar cuando no hay
+     * cabecera o el token no es válido — para endpoints públicos (p. ej. el listado de
+     * publicaciones) que deben seguir siendo accesibles sin sesión, pero que quieren saber quién
+     * pregunta cuando sí la hay (para calcular pertenencia a grupo, ver {@code PublicationService}).
+     */
+    public String resolveUserIdOrNull(String authHeader) {
+        if (authHeader == null) {
+            return null;
+        }
+        try {
+            return jwtService.extractUserId(authHeader);
+        } catch (ApiException ex) {
+            return null;
+        }
+    }
+
+    /**
      * Resuelve el usuario a partir del identificador de login: un nick prefijado con
      * {@code @} (p.ej. {@code @ana}) o un email. Mismo regex que {@link emc.mapIt.dto.AuthRegisterRequest}
      * para que "qué cuenta como email" sea consistente entre registro y login.

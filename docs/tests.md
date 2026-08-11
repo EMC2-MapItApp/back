@@ -16,13 +16,17 @@ src/test/java/emc/mapIt/
 │   ├── PasswordPolicyServiceTest.java     ← unitario puro (Fase 1 auth)
 │   ├── EmailVerificationServiceTest.java  ← unitario con Mockito (Fase 1 auth)
 │   ├── PasswordResetServiceTest.java      ← unitario con Mockito (Fase 1 auth)
-│   └── PublicationServiceTest.java        ← unitario con Mockito (borrado automático de caducadas)
+│   └── PublicationServiceTest.java        ← unitario con Mockito (borrado automático de caducadas + visibilidad)
 ├── controller/
 │   └── AuthControllerTest.java     ← capa web con MockMvc
-└── notifications/
-    ├── NotificationServiceTest.java     ← unitario con Mockito (orquestador email/in-app/push)
-    ├── WebPushSenderTest.java           ← unitario puro (adaptador VAPID, sin red real)
-    └── NotificationControllerTest.java  ← capa web con MockMvc
+├── notifications/
+│   ├── NotificationServiceTest.java     ← unitario con Mockito (orquestador email/in-app/push)
+│   ├── WebPushSenderTest.java           ← unitario puro (adaptador VAPID, sin red real)
+│   └── NotificationControllerTest.java  ← capa web con MockMvc
+├── groups/
+│   └── GroupServiceTest.java       ← unitario con Mockito (grupos, invitaciones, solicitudes de acceso)
+└── mapper/
+    └── PublicationMapperTest.java  ← unitario puro (entidad↔DTO, difuminado geográfico)
 ```
 
 ---
@@ -173,14 +177,119 @@ Dependencias mockeadas: `PasswordResetTokenRepository`, `UserRepository`, `HashS
 **Tipo:** Unitario con Mockito.
 **Clase bajo test:** `emc.mapIt.service.PublicationService`
 
-Dependencias mockeadas: `PublicationRepository`, `PublicationEnrollmentRepository`, `UserRepository`, `LocationTypeRepository`, `PublicationMapper`.
+Dependencias mockeadas: `PublicationRepository`, `PublicationEnrollmentRepository`, `UserRepository`, `LocationTypeRepository`, `PublicationMapper`, `GroupService`.
 
-Cubre el job programado (`@Scheduled`) que borra definitivamente las publicaciones caducadas hace más de 3 meses (según `endDate`, no fecha de creación; las promociones indefinidas con `endDate` null nunca se ven afectadas — ver `PublicationRepository.findExpiredSince`).
+Cubre el job programado (`@Scheduled`) que borra definitivamente las publicaciones caducadas hace más de 3 meses (según `endDate`, no fecha de creación; las promociones indefinidas con `endDate` null nunca se ven afectadas — ver `PublicationRepository.findExpiredSince`), y la visibilidad de publicaciones (`PUBLIC`/`PRIVATE_GROUP`): validación al crear, comprobación de pertenencia al grupo al inscribirse y al consultar apuntados, y la regla de cambio de visibilidad que bloquea perder inscritos ajenos al grupo destino.
+
+### Grupo: `deleteExpiredPublications`
 
 | Método de test | Descripción |
 |---|---|
 | `deleteExpiredPublications_conCaducadasHaceMasDeTresMeses_lasElimina` | Con publicaciones caducadas hace >3 meses, calcula el corte correcto y llama a `deleteAll` |
 | `deleteExpiredPublications_sinCaducadas_noBorraNada` | Sin resultados de `findExpiredSince`, no invoca `deleteAll` |
+
+### Grupo: `createEvent` (visibilidad)
+
+| Método de test | Descripción |
+|---|---|
+| `createEvent_privadaSinGroupId_lanzaBadRequest` | `visibility=PRIVATE_GROUP` sin `groupId` lanza `ApiException` (`BAD_REQUEST`) |
+| `createEvent_privadaConGrupoQueNoOrganiza_lanzaForbidden` | Grupo indicado no organizado por el autor lanza `ApiException` (`FORBIDDEN`) |
+| `createEvent_privadaConGrupoPropio_creaConVisibilidadYGroupId` | Grupo propio: persiste con `visibility`/`groupId` y resuelve el resumen de pertenencia del propio autor (siempre miembro) |
+
+### Grupo: `enroll` / `getEnrollments` (visibilidad)
+
+| Método de test | Descripción |
+|---|---|
+| `enroll_publicacionPrivadaNoMiembro_lanzaForbidden` | No ser miembro del grupo lanza `ApiException` (`NOT_GROUP_MEMBER`) antes de comprobar aforo |
+| `enroll_publicacionPrivadaMiembro_permiteInscripcion` | Miembro del grupo se inscribe con normalidad |
+| `getEnrollments_publicacionPrivadaNoMiembro_lanzaForbidden` | No ser miembro del grupo lanza `ApiException` (`FORBIDDEN`) — evita filtrar el roster completo |
+
+### Grupo: `changeVisibility`
+
+| Método de test | Descripción |
+|---|---|
+| `changeVisibility_privadaAPublica_siemprePermitido` | `PRIVATE_GROUP → PUBLIC` siempre permitido; limpia `groupId` |
+| `changeVisibility_publicaAPrivadaSinInscritosAjenos_permiteCambio` | Todos los inscritos ya son miembros del grupo destino: cambio permitido |
+| `changeVisibility_publicaAPrivadaConInscritosAjenos_lanzaConflict` | Hay inscritos ajenos al grupo destino: `ApiException` (`FOREIGN_ENROLLMENTS`, 409), no persiste el cambio |
+| `changeVisibility_noAutorNiAdmin_lanzaForbidden` | Solicitante que no es autor ni ADMIN lanza `ApiException` (`FORBIDDEN`) |
+
+---
+
+## GroupServiceTest
+
+**Tipo:** Unitario con Mockito.
+**Clase bajo test:** `emc.mapIt.groups.GroupService`
+
+Dependencias mockeadas: `GroupRepository`, `GroupMemberRepository`, `GroupInvitationRepository`, `GroupJoinRequestRepository`, `MainCategoryRepository`, `UserService`, `NotificationService`. Mappers reales (`GroupMapper`, `GroupInvitationMapper`, `GroupJoinRequestMapper`) en vez de mocks — su lógica es trivial y probarla vía el servicio da más confianza que stubearla (mismo criterio documentado en el propio archivo).
+
+### Grupo: `createGroup` / `updateGroup`
+
+| Método de test | Descripción |
+|---|---|
+| `createGroup_conDatosValidos_creaGrupoConOrganizadorComoMiembro` | El creador queda como `GroupMember` con rol `ORGANIZER` |
+| `createGroup_conCategoriaInexistente_lanzaApiException` | `categoryId` inválido no persiste el grupo |
+| `createGroup_conRequestNull_lanzaApiException` | Request `null` lanza `ApiException` |
+| `createGroup_conInviteUserIds_creaInvitacionesYEnviaEmails` | Invitaciones iniciales: ignora al propio organizador si aparece en la lista, crea una `GroupInvitation` por el resto y envía el email |
+| `updateGroup_comoOrganizador_actualizaCampos` | Organizador actualiza nombre/descripción/categoría |
+| `updateGroup_comoNoOrganizador_lanzaForbidden` | No-organizador no puede editar |
+| `updateGroup_conGrupoInexistente_lanzaNotFound` | Grupo inexistente lanza `ApiException` |
+
+### Grupo: `getGroupById` / `getMyGroups`
+
+| Método de test | Descripción |
+|---|---|
+| `getGroupById_comoMiembro_devuelveGrupo` | Miembro puede ver el detalle |
+| `getGroupById_comoNoMiembro_lanzaForbidden` | No-miembro no puede ver el detalle |
+| `getMyGroups_devuelveGruposDeLasMembresias` | Devuelve los grupos resueltos a partir de las membresías del usuario |
+
+### Grupo: `inviteUser` / `getPendingInvitations` / `acceptInvitation` / `declineInvitation`
+
+| Método de test | Descripción |
+|---|---|
+| `inviteUser_comoOrganizador_creaInvitacionYEnviaEmail` | Organizador invita a un usuario existente: crea `GroupInvitation` y envía email |
+| `inviteUser_comoNoOrganizador_lanzaForbidden` | No-organizador no puede invitar |
+| `inviteUser_aUsuarioYaMiembro_lanzaConflict` | Invitar a alguien ya miembro lanza conflicto |
+| `inviteUser_conInvitacionPendienteExistente_lanzaConflict` | Invitación pendiente duplicada lanza conflicto |
+| `inviteUser_aSiMismo_lanzaBadRequest` | El organizador no puede invitarse a sí mismo |
+| `getPendingInvitations_devuelveInvitacionesPendientes` | Lista las invitaciones `PENDING` del usuario, con datos del invitador resueltos |
+| `acceptInvitation_conInvitacionPropiaYPendiente_aceptaYAgregaMiembro` | Acepta: añade `GroupMember(MEMBER)` y marca `ACCEPTED` |
+| `acceptInvitation_deOtroUsuario_lanzaForbidden` | Solo el invitado puede aceptar su invitación |
+| `acceptInvitation_yaResuelta_lanzaConflict` | Invitación ya resuelta no puede volver a aceptarse |
+| `declineInvitation_conInvitacionPropiaYPendiente_marcaRechazada` | Rechaza sin añadir al grupo |
+
+### Grupo: `leaveGroup` / `notifyOrganizer`
+
+| Método de test | Descripción |
+|---|---|
+| `leaveGroup_comoMiembro_eliminaLaMembresia` | Miembro abandona el grupo |
+| `leaveGroup_comoOrganizador_lanzaForbidden` | El organizador no puede abandonar su propio grupo |
+| `leaveGroup_sinPertenecer_lanzaNotFound` | Quien no pertenece al grupo no puede abandonarlo |
+| `notifyOrganizer_comoMiembro_enviaEmailAlOrganizador` | Miembro avisa al organizador por email |
+| `notifyOrganizer_comoOrganizador_lanzaBadRequest` | El organizador no puede avisarse a sí mismo |
+| `notifyOrganizer_comoNoMiembro_lanzaForbidden` | No-miembro no puede avisar al organizador |
+
+### Grupo: `requestToJoin` / `acceptJoinRequest` / `rejectJoinRequest` (solicitudes de acceso)
+
+Solicitud de acceso iniciada por el propio usuario (a diferencia de `GroupInvitation`, iniciada por el organizador) — nace desde una publicación privada a la que intentó apuntarse sin ser miembro.
+
+| Método de test | Descripción |
+|---|---|
+| `requestToJoin_yaMiembro_lanzaConflictAlreadyMember` | Ya ser miembro lanza `ApiException` (`ALREADY_MEMBER`) |
+| `requestToJoin_solicitudPendienteExistente_lanzaConflictAlreadyRequested` | Solicitud `PENDING` duplicada lanza `ApiException` (`ALREADY_REQUESTED`) |
+| `requestToJoin_datosValidos_creaSolicitudPendiente` | Crea la solicitud en `PENDING` y notifica al organizador |
+| `acceptJoinRequest_organizador_anadeMiembroYMarcaAceptada` | Añade `GroupMember(MEMBER)`, marca `ACCEPTED` y notifica al solicitante — no inscribe en ninguna publicación |
+| `acceptJoinRequest_noOrganizador_lanzaForbidden` | Solo el organizador puede aceptar |
+| `rejectJoinRequest_organizador_marcaRechazadaSinAnadirMiembro` | Marca `REJECTED` sin añadir al grupo, notifica al solicitante |
+
+### Grupo: `isMember` / `isOrganizer` / `getMembershipSummary`
+
+API pública para que otros módulos (publicaciones) consulten pertenencia sin acceder a los repositorios de este módulo.
+
+| Método de test | Descripción |
+|---|---|
+| `isMember_usuarioMiembro_devuelveTrue` / `isMember_usuarioNoMiembro_devuelveFalse` | Comprobación directa de pertenencia |
+| `isOrganizer_organizadorDelGrupo_devuelveTrue` | Comprobación directa de organización (y `false` para un no-organizador) |
+| `getMembershipSummary_grupoInexistente_devuelveResumenVacioSinLanzar` | Grupo inexistente devuelve un resumen vacío (`isMember=false`) en vez de lanzar — un grupo borrado no debe romper la lectura de publicaciones que aún lo referencian |
 
 ---
 
@@ -326,4 +435,10 @@ Dependencias mockeadas con `@MockBean`: `NotificationService`, `NotificationMapp
 
 # Solo los tests del módulo de notificaciones (in-app + push VAPID)
 ./mvnw test -Dtest="NotificationServiceTest,WebPushSenderTest,NotificationControllerTest"
+
+# Solo los tests del módulo de grupos (grupos, invitaciones, solicitudes de acceso)
+./mvnw test -Dtest="GroupServiceTest"
+
+# Solo el mapper de publicaciones (entidad↔DTO, difuminado geográfico)
+./mvnw test -Dtest="PublicationMapperTest"
 ```

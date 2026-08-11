@@ -113,6 +113,45 @@ public class NotificationService {
                 "/groups");
     }
 
+    /** Alguien ha solicitado unirse a un grupo (iniciado desde una publicación privada). */
+    public void notifyGroupJoinRequest(MapItUser organizer, String groupName, MapItUser requester) {
+        if (isEmailEnabled(organizer.getId(), NotificationType.GROUP_JOIN_REQUEST)) {
+            notificationSender.sendGroupJoinRequestEmail(
+                    organizer.getEmail(), organizer.getName(), groupName, requester.getName());
+        }
+
+        dispatch(organizer.getId(), NotificationType.GROUP_JOIN_REQUEST,
+                "Solicitud para " + groupName,
+                requester.getName() + " quiere unirse a \"" + groupName + "\"",
+                "/groups");
+    }
+
+    /** Una solicitud de acceso a grupo ha sido aceptada o rechazada. */
+    public void notifyGroupJoinRequestResolved(MapItUser requester, String groupName, boolean accepted) {
+        if (isEmailEnabled(requester.getId(), NotificationType.GROUP_JOIN_REQUEST_RESOLVED)) {
+            notificationSender.sendGroupJoinRequestResolvedEmail(
+                    requester.getEmail(), requester.getName(), groupName, accepted);
+        }
+
+        dispatch(requester.getId(), NotificationType.GROUP_JOIN_REQUEST_RESOLVED,
+                "Solicitud " + (accepted ? "aceptada" : "rechazada"),
+                "Tu solicitud para unirte a \"" + groupName + "\" ha sido " + (accepted ? "aceptada" : "rechazada"),
+                "/groups");
+    }
+
+    /** Invitación individual a un evento (publicación), independiente de su visibilidad. */
+    public void notifyPublicationInvitation(MapItUser invited, String publicationTitle, MapItUser invitedBy) {
+        if (isEmailEnabled(invited.getId(), NotificationType.PUBLICATION_INVITATION)) {
+            notificationSender.sendPublicationInvitationEmail(
+                    invited.getEmail(), invited.getName(), publicationTitle, invitedBy.getName());
+        }
+
+        dispatch(invited.getId(), NotificationType.PUBLICATION_INVITATION,
+                "Invitación a \"" + publicationTitle + "\"",
+                invitedBy.getName() + " te ha invitado al evento \"" + publicationTitle + "\"",
+                "/");
+    }
+
     // ── Centro de notificaciones in-app ─────────────────────────────────────────
 
     public List<Notification> listForUser(String userId) {

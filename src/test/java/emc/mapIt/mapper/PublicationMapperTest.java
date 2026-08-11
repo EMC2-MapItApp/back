@@ -31,7 +31,7 @@ class PublicationMapperTest {
         CreatePublicationRequest request = new CreatePublicationRequest(
                 null, "loc-1", "Título", null,
                 LocalDateTime.now(), null,
-                ORIGIN_LAT, ORIGIN_LNG, 0, Map.of());
+                ORIGIN_LAT, ORIGIN_LNG, 0, Map.of(), null, null, null);
 
         Publication publication = mapper.toEntity(request, null, null);
 
@@ -58,7 +58,7 @@ class PublicationMapperTest {
                 null, "loc-1", "Título", null,
                 LocalDateTime.now(), null,
                 ORIGIN_LAT, ORIGIN_LNG, 0,
-                Map.of("exactLocation", exactLocation));
+                Map.of("exactLocation", exactLocation), null, null, null);
     }
 
     private double haversineKm(double lat1, double lng1, double lat2, double lng2) {

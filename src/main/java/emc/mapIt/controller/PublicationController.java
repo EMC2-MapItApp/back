@@ -1,9 +1,11 @@
 package emc.mapIt.controller;
 
+import emc.mapIt.dto.ChangeVisibilityRequest;
 import emc.mapIt.dto.CreatePublicationRequest;
 import emc.mapIt.dto.EnrollmentDto;
 import emc.mapIt.dto.PublicationEnrollmentResponse;
 import emc.mapIt.dto.PublicationResponse;
+import emc.mapIt.groups.GroupJoinRequestResponse;
 import emc.mapIt.service.AuthService;
 import emc.mapIt.service.PublicationService;
 import jakarta.validation.Valid;
@@ -12,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -60,41 +63,51 @@ public class PublicationController {
     }
 
     /**
-     * Recupera una publicación por su identificador.
+     * Recupera una publicación por su identificador. Ruta pública (ver {@code SecurityConfig}):
+     * accesible sin sesión, pero si hay una válida se usa para calcular pertenencia a grupo en
+     * publicaciones privadas.
      *
-     * @param id identificador de la publicación
+     * @param id            identificador de la publicación
+     * @param authorization cabecera Authorization con JWT, opcional
      * @return vista serializable de la publicación
      */
     @GetMapping("/{id}")
-    public PublicationResponse getById(@PathVariable String id) {
+    public PublicationResponse getById(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.debug("Lectura de publicación id={}", id);
-        return publicationService.findById(id);
+        return publicationService.findById(id, authService.resolveUserIdOrNull(authorization));
     }
 
     /**
-     * Lista publicaciones disponibles para el mapa.
+     * Lista publicaciones disponibles para el mapa. Ruta pública, misma lógica de viewer opcional
+     * que {@link #getById}.
      *
-     * @param activeOnly si true, solo devuelve publicaciones activas
+     * @param activeOnly    si true, solo devuelve publicaciones activas
+     * @param authorization cabecera Authorization con JWT, opcional
      * @return lista de publicaciones serializables
      */
     @GetMapping
-    public List<PublicationResponse> getAll(@RequestParam(defaultValue = "true") boolean activeOnly) {
+    public List<PublicationResponse> getAll(@RequestParam(defaultValue = "true") boolean activeOnly,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.debug("Lectura de publicaciones activeOnly={}", activeOnly);
-        return publicationService.findAll(activeOnly);
+        return publicationService.findAll(activeOnly, authService.resolveUserIdOrNull(authorization));
     }
 
     /**
-     * Lista publicaciones de un autor.
+     * Lista publicaciones de un autor. Ruta pública, misma lógica de viewer opcional que
+     * {@link #getById}.
      *
-     * @param authorId   identificador del autor
-     * @param activeOnly si true, solo muestra activas
+     * @param authorId      identificador del autor
+     * @param activeOnly    si true, solo muestra activas
+     * @param authorization cabecera Authorization con JWT, opcional
      * @return lista de publicaciones serializables
      */
     @GetMapping("/author/{authorId}")
     public List<PublicationResponse> getByAuthor(@PathVariable String authorId,
-            @RequestParam(defaultValue = "true") boolean activeOnly) {
+            @RequestParam(defaultValue = "true") boolean activeOnly,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.debug("Lectura de publicaciones authorId={}, activeOnly={}", authorId, activeOnly);
-        return publicationService.findByAuthor(authorId, activeOnly);
+        return publicationService.findByAuthor(authorId, activeOnly, authService.resolveUserIdOrNull(authorization));
     }
 
     /**
@@ -110,6 +123,23 @@ public class PublicationController {
         log.info("Solicitud de borrado definitivo de publicación id={}", id);
         publicationService.deleteById(id, authService.requireUserId(authorization));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Cambia la visibilidad de una publicación existente. Solo el autor o un ADMIN pueden
+     * hacerlo; bloqueado si al pasar a privada hay inscritos ajenos al grupo destino.
+     *
+     * @param id            identificador de la publicación
+     * @param request       visibilidad destino y, si aplica, grupo
+     * @param authorization cabecera Authorization con JWT
+     * @return publicación actualizada
+     */
+    @PatchMapping("/{id}/visibility")
+    public PublicationResponse changeVisibility(@PathVariable String id,
+            @Valid @RequestBody ChangeVisibilityRequest request,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Solicitud de cambio de visibilidad publicationId={}", id);
+        return publicationService.changeVisibility(id, authService.requireUserId(authorization), request);
     }
 
     /**
@@ -129,16 +159,36 @@ public class PublicationController {
     }
 
     /**
- * Lista los usuarios inscritos en una publicación.
- *
- * @param id identificador de la publicación
- * @return lista de inscritos con sus nombres
- */
-@GetMapping("/{id}/enrollments")
-public List<EnrollmentDto> getEnrollments(@PathVariable String id) {
-    log.debug("Lectura de inscritos publicationId={}", id);
-    return publicationService.getEnrollments(id);
-}
+     * Solicita acceso al grupo de una publicación privada, para poder apuntarse después.
+     *
+     * @param id            identificador de la publicación privada
+     * @param authorization cabecera Authorization con JWT
+     * @return solicitud de acceso creada
+     */
+    @PostMapping("/{id}/access-requests")
+    public ResponseEntity<GroupJoinRequestResponse> requestAccess(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Solicitud de acceso publicationId={}", id);
+        GroupJoinRequestResponse response = publicationService.requestAccess(id,
+                authService.requireUserId(authorization));
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Lista los usuarios inscritos en una publicación. Requiere sesión (ver
+     * {@code SecurityConfig}: no está en la lista de lecturas públicas); en publicaciones
+     * privadas solo pueden verla los miembros del grupo.
+     *
+     * @param id            identificador de la publicación
+     * @param authorization cabecera Authorization con JWT
+     * @return lista de inscritos con sus nombres
+     */
+    @GetMapping("/{id}/enrollments")
+    public List<EnrollmentDto> getEnrollments(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.debug("Lectura de inscritos publicationId={}", id);
+        return publicationService.getEnrollments(id, authService.requireUserId(authorization));
+    }
 
     /**
      * Desapunta al usuario autenticado de una publicación.

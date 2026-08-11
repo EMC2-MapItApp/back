@@ -86,4 +86,36 @@ public interface NotificationSender {
      */
     void sendGroupBroadcastEmail(String to, String recipientName, String groupName, String organizerName,
             String subject, String message);
+
+    /**
+     * Notifica al organizador de un grupo de que alguien ha solicitado unirse (iniciado desde una
+     * publicación privada del grupo a la que quien solicita no podía apuntarse).
+     *
+     * @param to             destino del organizador (hoy: dirección de email)
+     * @param organizerName  nombre del organizador, para personalizar el mensaje
+     * @param groupName      nombre del grupo
+     * @param requesterName  nombre de quien solicita unirse
+     */
+    void sendGroupJoinRequestEmail(String to, String organizerName, String groupName, String requesterName);
+
+    /**
+     * Notifica a quien solicitó unirse a un grupo de que su solicitud ha sido resuelta.
+     *
+     * @param to            destino de quien solicitó (hoy: dirección de email)
+     * @param requesterName nombre de quien solicitó, para personalizar el mensaje
+     * @param groupName     nombre del grupo
+     * @param accepted      {@code true} si se aceptó, {@code false} si se rechazó
+     */
+    void sendGroupJoinRequestResolvedEmail(String to, String requesterName, String groupName, boolean accepted);
+
+    /**
+     * Notifica a un usuario que ha sido invitado individualmente a una publicación (evento),
+     * sea cual sea su visibilidad.
+     *
+     * @param to               destino del usuario invitado (hoy: dirección de email)
+     * @param userName         nombre del usuario invitado, para personalizar el mensaje
+     * @param publicationTitle título de la publicación a la que se le invita
+     * @param invitedByName    nombre de quien envía la invitación
+     */
+    void sendPublicationInvitationEmail(String to, String userName, String publicationTitle, String invitedByName);
 }

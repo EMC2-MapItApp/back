@@ -278,7 +278,13 @@ public class UserController {
             @RequestParam(defaultValue = "true") boolean activeOnly) {
         log.debug("Lectura de publicaciones usuario id={}, activeOnly={}", id, activeOnly);
         userService.getByIdOrThrow(id);
-        return publicationService.findByAuthor(id, activeOnly);
+        // Sin cabecera Authorization en esta ruta: se asume que "id" es siempre el propio usuario
+        // consultando sus publicaciones (el frontend solo la usa para "mis publicaciones"), así
+        // que se pasa como viewerId — un autor siempre es miembro/organizador de cualquier grupo
+        // que use en sus publicaciones privadas, por lo que nunca se le enmascara su propio aforo.
+        // Si esta ruta llegara a reutilizarse para el perfil público de un tercero, hay que
+        // resolver aquí el viewer real de la sesión en vez de asumir que es "id".
+        return publicationService.findByAuthor(id, activeOnly, id);
     }
 
     /**

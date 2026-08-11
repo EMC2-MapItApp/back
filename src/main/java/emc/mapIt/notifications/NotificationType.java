@@ -8,5 +8,8 @@ package emc.mapIt.notifications;
 public enum NotificationType {
     GROUP_INVITATION,
     GROUP_ORGANIZER_NOTICE,
-    GROUP_BROADCAST
+    GROUP_BROADCAST,
+    GROUP_JOIN_REQUEST,
+    GROUP_JOIN_REQUEST_RESOLVED,
+    PUBLICATION_INVITATION
 }
