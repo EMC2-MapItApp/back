@@ -33,6 +33,7 @@ class GroupServiceTest {
     @Mock private GroupRepository groupRepository;
     @Mock private GroupMemberRepository groupMemberRepository;
     @Mock private GroupInvitationRepository groupInvitationRepository;
+    @Mock private GroupJoinRequestRepository groupJoinRequestRepository;
     @Mock private MainCategoryRepository mainCategoryRepository;
     @Mock private UserService userService;
     @Mock private NotificationService notificationService;
@@ -42,6 +43,7 @@ class GroupServiceTest {
     // vía el servicio da más confianza que stubearla.
     private final GroupMapper groupMapper = new GroupMapper();
     private final GroupInvitationMapper groupInvitationMapper = new GroupInvitationMapper();
+    private final GroupJoinRequestMapper groupJoinRequestMapper = new GroupJoinRequestMapper();
 
     private GroupService groupService;
 
@@ -58,8 +60,8 @@ class GroupServiceTest {
     void setUp() {
         groupService = new GroupService(
                 groupRepository, groupMemberRepository, groupInvitationRepository,
-                mainCategoryRepository, userService, notificationService,
-                groupMapper, groupInvitationMapper);
+                groupJoinRequestRepository, mainCategoryRepository, userService, notificationService,
+                groupMapper, groupInvitationMapper, groupJoinRequestMapper);
 
         grupo = new Group();
         grupo.setId(GROUP_ID);
@@ -456,6 +458,162 @@ class GroupServiceTest {
         assertThatThrownBy(() -> groupService.notifyOrganizer(
                 "extraño", GROUP_ID, new NotifyOrganizerRequest("asunto", "mensaje")))
                 .isInstanceOf(ApiException.class);
+    }
+
+    // ── Solicitudes de acceso ────────────────────────────────────
+
+    private static final String REQUESTER_ID = "solicitante-1";
+    private static final String PUB_ID = "pub-1";
+
+    private MapItUser solicitante;
+
+    private GroupJoinRequest solicitudPendiente() {
+        GroupJoinRequest request = new GroupJoinRequest();
+        request.setId("req-1");
+        request.setGroupId(GROUP_ID);
+        request.setRequestedByUserId(REQUESTER_ID);
+        request.setPublicationId(PUB_ID);
+        request.setStatus(GroupJoinRequestStatus.PENDING);
+        request.setCreatedAt(Instant.now());
+        return request;
+    }
+
+    @Test
+    void requestToJoin_yaMiembro_lanzaConflictAlreadyMember() {
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
+        when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, REQUESTER_ID)).thenReturn(true);
+
+        assertThatThrownBy(() -> groupService.requestToJoin(REQUESTER_ID, GROUP_ID, PUB_ID))
+                .isInstanceOf(ApiException.class);
+
+        verify(groupJoinRequestRepository, never()).save(any());
+    }
+
+    @Test
+    void requestToJoin_solicitudPendienteExistente_lanzaConflictAlreadyRequested() {
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
+        when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, REQUESTER_ID)).thenReturn(false);
+        when(groupJoinRequestRepository.existsByGroupIdAndRequestedByUserIdAndStatus(
+                GROUP_ID, REQUESTER_ID, GroupJoinRequestStatus.PENDING)).thenReturn(true);
+
+        assertThatThrownBy(() -> groupService.requestToJoin(REQUESTER_ID, GROUP_ID, PUB_ID))
+                .isInstanceOf(ApiException.class);
+
+        verify(groupJoinRequestRepository, never()).save(any());
+    }
+
+    @Test
+    void requestToJoin_datosValidos_creaSolicitudPendiente() {
+        solicitante = new MapItUser(REQUESTER_ID, "Solicitante", "solicitante@test.com", "hash", UserType.PARTICULAR);
+        solicitante.setNick("solicitante");
+
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
+        when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, REQUESTER_ID)).thenReturn(false);
+        when(groupJoinRequestRepository.existsByGroupIdAndRequestedByUserIdAndStatus(
+                GROUP_ID, REQUESTER_ID, GroupJoinRequestStatus.PENDING)).thenReturn(false);
+        when(groupJoinRequestRepository.save(any(GroupJoinRequest.class))).thenAnswer(inv -> {
+            GroupJoinRequest gjr = inv.getArgument(0);
+            gjr.setId("req-1");
+            return gjr;
+        });
+        when(userService.getByIdOrThrow(REQUESTER_ID)).thenReturn(solicitante);
+        when(userService.getByIdOrThrow(ORGANIZER_ID)).thenReturn(organizador);
+
+        GroupJoinRequestResponse response = groupService.requestToJoin(REQUESTER_ID, GROUP_ID, PUB_ID);
+
+        assertThat(response.status()).isEqualTo(GroupJoinRequestStatus.PENDING);
+        assertThat(response.requestedByUserId()).isEqualTo(REQUESTER_ID);
+        verify(notificationService).notifyGroupJoinRequest(organizador, "Club de Ciclismo", solicitante);
+    }
+
+    @Test
+    void acceptJoinRequest_organizador_anadeMiembroYMarcaAceptada() {
+        solicitante = new MapItUser(REQUESTER_ID, "Solicitante", "solicitante@test.com", "hash", UserType.PARTICULAR);
+        GroupJoinRequest request = solicitudPendiente();
+
+        when(groupJoinRequestRepository.findById("req-1")).thenReturn(Optional.of(request));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
+        when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, REQUESTER_ID)).thenReturn(false);
+        when(userService.getByIdOrThrow(REQUESTER_ID)).thenReturn(solicitante);
+        when(groupMemberRepository.findByGroupId(GROUP_ID)).thenReturn(List.of());
+
+        GroupResponse response = groupService.acceptJoinRequest(ORGANIZER_ID, "req-1");
+
+        assertThat(response.id()).isEqualTo(GROUP_ID);
+
+        ArgumentCaptor<GroupMember> memberCaptor = ArgumentCaptor.forClass(GroupMember.class);
+        verify(groupMemberRepository).save(memberCaptor.capture());
+        assertThat(memberCaptor.getValue().getUserId()).isEqualTo(REQUESTER_ID);
+        assertThat(memberCaptor.getValue().getRole()).isEqualTo(GroupRole.MEMBER);
+
+        ArgumentCaptor<GroupJoinRequest> requestCaptor = ArgumentCaptor.forClass(GroupJoinRequest.class);
+        verify(groupJoinRequestRepository).save(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getStatus()).isEqualTo(GroupJoinRequestStatus.ACCEPTED);
+
+        verify(notificationService).notifyGroupJoinRequestResolved(solicitante, "Club de Ciclismo", true);
+    }
+
+    @Test
+    void acceptJoinRequest_noOrganizador_lanzaForbidden() {
+        GroupJoinRequest request = solicitudPendiente();
+        when(groupJoinRequestRepository.findById("req-1")).thenReturn(Optional.of(request));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
+
+        assertThatThrownBy(() -> groupService.acceptJoinRequest(MEMBER_ID, "req-1"))
+                .isInstanceOf(ApiException.class);
+
+        verify(groupMemberRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectJoinRequest_organizador_marcaRechazadaSinAnadirMiembro() {
+        solicitante = new MapItUser(REQUESTER_ID, "Solicitante", "solicitante@test.com", "hash", UserType.PARTICULAR);
+        GroupJoinRequest request = solicitudPendiente();
+
+        when(groupJoinRequestRepository.findById("req-1")).thenReturn(Optional.of(request));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
+        when(userService.getByIdOrThrow(REQUESTER_ID)).thenReturn(solicitante);
+
+        groupService.rejectJoinRequest(ORGANIZER_ID, "req-1");
+
+        ArgumentCaptor<GroupJoinRequest> requestCaptor = ArgumentCaptor.forClass(GroupJoinRequest.class);
+        verify(groupJoinRequestRepository).save(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().getStatus()).isEqualTo(GroupJoinRequestStatus.REJECTED);
+
+        verify(groupMemberRepository, never()).save(any());
+        verify(notificationService).notifyGroupJoinRequestResolved(solicitante, "Club de Ciclismo", false);
+    }
+
+    // ── isMember / isOrganizer / getMembershipSummary ────────────
+
+    @Test
+    void isMember_usuarioMiembro_devuelveTrue() {
+        when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, MEMBER_ID)).thenReturn(true);
+        assertThat(groupService.isMember(GROUP_ID, MEMBER_ID)).isTrue();
+    }
+
+    @Test
+    void isMember_usuarioNoMiembro_devuelveFalse() {
+        when(groupMemberRepository.existsByGroupIdAndUserId(GROUP_ID, "extraño")).thenReturn(false);
+        assertThat(groupService.isMember(GROUP_ID, "extraño")).isFalse();
+    }
+
+    @Test
+    void isOrganizer_organizadorDelGrupo_devuelveTrue() {
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(grupo));
+        assertThat(groupService.isOrganizer(GROUP_ID, ORGANIZER_ID)).isTrue();
+        assertThat(groupService.isOrganizer(GROUP_ID, MEMBER_ID)).isFalse();
+    }
+
+    @Test
+    void getMembershipSummary_grupoInexistente_devuelveResumenVacioSinLanzar() {
+        when(groupRepository.findById("no-existe")).thenReturn(Optional.empty());
+
+        GroupMembershipSummary summary = groupService.getMembershipSummary("no-existe", MEMBER_ID);
+
+        assertThat(summary.isMember()).isFalse();
+        assertThat(summary.groupName()).isNull();
+        assertThat(summary.memberCount()).isZero();
     }
 
     // ── Fixtures ─────────────────────────────────────────────────

@@ -178,6 +178,52 @@ public class GroupController {
     }
 
     /**
+     * Devuelve las solicitudes de acceso pendientes de un grupo (iniciadas por usuarios que
+     * intentaron apuntarse a una publicación privada sin ser miembros). Solo el organizador puede
+     * verlas.
+     *
+     * @param id            identificador del grupo
+     * @param authorization cabecera Authorization con JWT
+     * @return solicitudes en estado PENDING
+     */
+    @GetMapping("/{id}/join-requests")
+    public List<GroupJoinRequestResponse> getGroupPendingJoinRequests(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.debug("Lectura de solicitudes de acceso pendientes groupId={}", id);
+        return groupService.getGroupPendingJoinRequests(authService.requireUserId(authorization), id);
+    }
+
+    /**
+     * Acepta una solicitud de acceso pendiente: añade al solicitante como miembro. Solo el
+     * organizador puede hacerlo.
+     *
+     * @param requestId     identificador de la solicitud
+     * @param authorization cabecera Authorization con JWT
+     * @return grupo al que se ha unido el solicitante
+     */
+    @PostMapping("/join-requests/{requestId}/accept")
+    public GroupResponse acceptJoinRequest(@PathVariable String requestId,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Solicitud de aceptación de solicitud de acceso id={}", requestId);
+        return groupService.acceptJoinRequest(authService.requireUserId(authorization), requestId);
+    }
+
+    /**
+     * Rechaza una solicitud de acceso pendiente. Solo el organizador puede hacerlo.
+     *
+     * @param requestId     identificador de la solicitud
+     * @param authorization cabecera Authorization con JWT
+     * @return sin contenido
+     */
+    @PostMapping("/join-requests/{requestId}/reject")
+    public ResponseEntity<Void> rejectJoinRequest(@PathVariable String requestId,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Solicitud de rechazo de solicitud de acceso id={}", requestId);
+        groupService.rejectJoinRequest(authService.requireUserId(authorization), requestId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * Elimina un grupo permanentemente. Solo el organizador puede hacerlo.
      * Borra en cascada miembros e invitaciones del grupo.
      *

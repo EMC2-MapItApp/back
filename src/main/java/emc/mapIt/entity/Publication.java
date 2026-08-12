@@ -50,6 +50,11 @@ public class Publication {
 
     private Boolean active = true;
 
+    private PublicationVisibility visibility = PublicationVisibility.PUBLIC;
+
+    /** Id del {@code Group} al que está restringida esta publicación. Solo poblado si {@code visibility == PRIVATE_GROUP}. */
+    private String groupId;
+
     // Constructores
     public Publication() {
     }
@@ -174,5 +179,21 @@ public class Publication {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public PublicationVisibility getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(PublicationVisibility visibility) {
+        this.visibility = visibility;
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
     }
 }
