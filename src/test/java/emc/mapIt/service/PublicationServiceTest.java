@@ -12,7 +12,9 @@ import emc.mapIt.exception.ApiException;
 import emc.mapIt.groups.GroupMembershipSummary;
 import emc.mapIt.groups.GroupService;
 import emc.mapIt.mapper.PublicationMapper;
+import emc.mapIt.notifications.NotificationService;
 import emc.mapIt.repository.LocationTypeRepository;
+import emc.mapIt.repository.PublicationAccessRequestRepository;
 import emc.mapIt.repository.PublicationEnrollmentRepository;
 import emc.mapIt.repository.PublicationInvitationRepository;
 import emc.mapIt.repository.PublicationRepository;
@@ -49,10 +51,13 @@ class PublicationServiceTest {
     @Mock private PublicationRepository publicationRepository;
     @Mock private PublicationEnrollmentRepository publicationEnrollmentRepository;
     @Mock private PublicationInvitationRepository publicationInvitationRepository;
+    @Mock private PublicationAccessRequestRepository publicationAccessRequestRepository;
     @Mock private UserRepository userRepository;
     @Mock private LocationTypeRepository locationTypeRepository;
     @Mock private PublicationMapper publicationMapper;
     @Mock private GroupService groupService;
+    @Mock private UserService userService;
+    @Mock private NotificationService notificationService;
     @Mock private PublicationInvitationDispatcher publicationInvitationDispatcher;
 
     private PublicationService publicationService;
@@ -61,8 +66,9 @@ class PublicationServiceTest {
     void setUp() {
         publicationService = new PublicationService(
                 publicationRepository, publicationEnrollmentRepository, publicationInvitationRepository,
+                publicationAccessRequestRepository,
                 userRepository, locationTypeRepository, publicationMapper, groupService,
-                publicationInvitationDispatcher);
+                userService, notificationService, publicationInvitationDispatcher);
     }
 
     // ── deleteExpiredPublications ───────────────────────────────

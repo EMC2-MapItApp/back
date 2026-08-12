@@ -41,6 +41,9 @@ public class EmailNotificationSender implements NotificationSender {
     private static final String GROUP_JOIN_REQUEST_TEMPLATE_PATH = "templates/email/group-join-request-email.html";
     private static final String GROUP_JOIN_REQUEST_RESOLVED_TEMPLATE_PATH = "templates/email/group-join-request-resolved-email.html";
     private static final String PUBLICATION_INVITATION_TEMPLATE_PATH = "templates/email/publication-invitation-email.html";
+    private static final String PUBLICATION_ACCESS_REQUEST_TEMPLATE_PATH = "templates/email/publication-access-request-email.html";
+    private static final String PUBLICATION_ACCESS_REQUEST_RESOLVED_TEMPLATE_PATH = "templates/email/publication-access-request-resolved-email.html";
+    private static final String DEVELOPER_FEEDBACK_TEMPLATE_PATH = "templates/email/developer-feedback-email.html";
 
     private final JavaMailSender mailSender;
     private final String fromAddress;
@@ -387,6 +390,117 @@ public class EmailNotificationSender implements NotificationSender {
             throw new ApiException(
                     "MAIL_SEND_FAILED",
                     "No se pudo enviar el correo de invitación al evento.",
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
+    public void sendPublicationAccessRequestEmail(String to, String authorName, String publicationTitle,
+            String requesterName) {
+        log.info("Preparando email de solicitud de acceso a publicación: to={} publicationTitle={} requesterName={}",
+                to, publicationTitle, requesterName);
+
+        String html = loadTemplate(PUBLICATION_ACCESS_REQUEST_TEMPLATE_PATH)
+                .replace("{{authorName}}", escapeHtml(authorName))
+                .replace("{{publicationTitle}}", escapeHtml(publicationTitle))
+                .replace("{{requesterName}}", escapeHtml(requesterName))
+                .replace("{{appLink}}", frontendBaseUrl);
+
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(to);
+            helper.setFrom(fromAddress);
+            helper.setSubject("Nueva solicitud para apuntarse a \"" + publicationTitle + "\" en MapIt");
+            helper.setText(html, true);
+
+            log.debug("Enviando email de solicitud de acceso a publicación vía SMTP: to={} from={}", to, fromAddress);
+            mailSender.send(mimeMessage);
+            log.info("Email de solicitud de acceso a publicación enviado correctamente: to={}", to);
+        } catch (MessagingException | MailException ex) {
+            log.error("Fallo enviando email de solicitud de acceso a publicación: to={} publicationTitle={} causa={}: {}",
+                    to, publicationTitle, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw new ApiException(
+                    "MAIL_SEND_FAILED",
+                    "No se pudo enviar el correo de solicitud de acceso al autor.",
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
+    public void sendPublicationAccessRequestResolvedEmail(String to, String requesterName, String publicationTitle,
+            boolean accepted) {
+        log.info("Preparando email de resolución de solicitud de acceso a publicación: to={} publicationTitle={} accepted={}",
+                to, publicationTitle, accepted);
+
+        String outcomeText = accepted ? "aceptada" : "rechazada";
+        String outcomeDetail = accepted
+                ? "Ya puedes apuntarte al evento."
+                : "El autor ha decidido no aceptarla esta vez.";
+
+        String html = loadTemplate(PUBLICATION_ACCESS_REQUEST_RESOLVED_TEMPLATE_PATH)
+                .replace("{{requesterName}}", escapeHtml(requesterName))
+                .replace("{{publicationTitle}}", escapeHtml(publicationTitle))
+                .replace("{{outcomeText}}", outcomeText)
+                .replace("{{outcomeDetail}}", outcomeDetail);
+
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(to);
+            helper.setFrom(fromAddress);
+            helper.setSubject("Tu solicitud para apuntarte a \"" + publicationTitle + "\" ha sido " + outcomeText);
+            helper.setText(html, true);
+
+            log.debug("Enviando email de resolución de solicitud de acceso vía SMTP: to={} from={}", to, fromAddress);
+            mailSender.send(mimeMessage);
+            log.info("Email de resolución de solicitud de acceso enviado correctamente: to={}", to);
+        } catch (MessagingException | MailException ex) {
+            log.error("Fallo enviando email de resolución de solicitud de acceso: to={} publicationTitle={} causa={}: {}",
+                    to, publicationTitle, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw new ApiException(
+                    "MAIL_SEND_FAILED",
+                    "No se pudo enviar el correo de resolución de la solicitud.",
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Envia a una cuenta administradora el feedback (bug/sugerencia/otro) escrito por un usuario
+     * para el equipo de desarrollo. Igual que {@link #sendGroupOrganizerNoticeEmail}, incrusta
+     * texto libre de usuario ({@code fromUserName}, {@code fromUserEmail}, {@code subject},
+     * {@code message}) y por tanto se escapa a HTML antes de insertarlo en la plantilla.
+     */
+    @Override
+    public void sendDeveloperFeedbackEmail(String to, String category, String fromUserName, String fromUserEmail,
+            String subject, String message) {
+        log.info("Preparando email de feedback al desarrollador: to={} category={} fromUserName={}",
+                to, category, fromUserName);
+
+        String html = loadTemplate(DEVELOPER_FEEDBACK_TEMPLATE_PATH)
+                .replace("{{category}}", escapeHtml(category))
+                .replace("{{fromUserName}}", escapeHtml(fromUserName))
+                .replace("{{fromUserEmail}}", escapeHtml(fromUserEmail))
+                .replace("{{subject}}", escapeHtml(subject))
+                .replace("{{message}}", escapeHtml(message));
+
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(to);
+            helper.setFrom(fromAddress);
+            helper.setSubject("Nuevo feedback (" + category + ") en MapIt");
+            helper.setText(html, true);
+
+            log.debug("Enviando email de feedback al desarrollador vía SMTP: to={} from={}", to, fromAddress);
+            mailSender.send(mimeMessage);
+            log.info("Email de feedback al desarrollador enviado correctamente: to={}", to);
+        } catch (MessagingException | MailException ex) {
+            log.error("Fallo enviando email de feedback al desarrollador: to={} category={} causa={}: {}",
+                    to, category, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw new ApiException(
+                    "MAIL_SEND_FAILED",
+                    "No se pudo enviar el correo de feedback al equipo de desarrollo.",
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

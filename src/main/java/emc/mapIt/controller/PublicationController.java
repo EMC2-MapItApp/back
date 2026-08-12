@@ -3,9 +3,9 @@ package emc.mapIt.controller;
 import emc.mapIt.dto.ChangeVisibilityRequest;
 import emc.mapIt.dto.CreatePublicationRequest;
 import emc.mapIt.dto.EnrollmentDto;
+import emc.mapIt.dto.PublicationAccessRequestResponse;
 import emc.mapIt.dto.PublicationEnrollmentResponse;
 import emc.mapIt.dto.PublicationResponse;
-import emc.mapIt.groups.GroupJoinRequestResponse;
 import emc.mapIt.service.AuthService;
 import emc.mapIt.service.PublicationService;
 import jakarta.validation.Valid;
@@ -159,19 +159,64 @@ public class PublicationController {
     }
 
     /**
-     * Solicita acceso al grupo de una publicación privada, para poder apuntarse después.
+     * Solicita apuntarse a una publicación privada de la que no se tiene acceso todavía. La
+     * aprueba el autor de la publicación (ver {@link #getPendingAccessRequests}), no el
+     * organizador de ningún grupo.
      *
      * @param id            identificador de la publicación privada
      * @param authorization cabecera Authorization con JWT
      * @return solicitud de acceso creada
      */
     @PostMapping("/{id}/access-requests")
-    public ResponseEntity<GroupJoinRequestResponse> requestAccess(@PathVariable String id,
+    public ResponseEntity<PublicationAccessRequestResponse> requestAccess(@PathVariable String id,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.info("Solicitud de acceso publicationId={}", id);
-        GroupJoinRequestResponse response = publicationService.requestAccess(id,
+        PublicationAccessRequestResponse response = publicationService.requestAccess(id,
                 authService.requireUserId(authorization));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Lista las solicitudes de acceso pendientes de una publicación. Solo el autor (o un ADMIN)
+     * puede verlas.
+     *
+     * @param id            identificador de la publicación
+     * @param authorization cabecera Authorization con JWT
+     * @return solicitudes pendientes
+     */
+    @GetMapping("/{id}/access-requests")
+    public List<PublicationAccessRequestResponse> getPendingAccessRequests(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.debug("Lectura de solicitudes de acceso publicationId={}", id);
+        return publicationService.getPendingAccessRequests(id, authService.requireUserId(authorization));
+    }
+
+    /**
+     * Acepta una solicitud de acceso. Solo el autor de la publicación (o un ADMIN) puede hacerlo.
+     *
+     * @param requestId     identificador de la solicitud
+     * @param authorization cabecera Authorization con JWT
+     * @return solicitud actualizada
+     */
+    @PostMapping("/access-requests/{requestId}/accept")
+    public PublicationAccessRequestResponse acceptAccessRequest(@PathVariable String requestId,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Aceptando solicitud de acceso requestId={}", requestId);
+        return publicationService.acceptAccessRequest(requestId, authService.requireUserId(authorization));
+    }
+
+    /**
+     * Rechaza una solicitud de acceso. Solo el autor de la publicación (o un ADMIN) puede hacerlo.
+     *
+     * @param requestId     identificador de la solicitud
+     * @param authorization cabecera Authorization con JWT
+     * @return solicitud actualizada
+     */
+    @PostMapping("/access-requests/{requestId}/reject")
+    public PublicationAccessRequestResponse rejectAccessRequest(@PathVariable String requestId,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        log.info("Rechazando solicitud de acceso requestId={}", requestId);
+        return publicationService.rejectAccessRequest(requestId, authService.requireUserId(authorization));
     }
 
     /**

@@ -1,22 +1,28 @@
 package emc.mapIt.service;
 
+import emc.mapIt.domain.MapItUser;
 import emc.mapIt.dto.ChangeVisibilityRequest;
 import emc.mapIt.dto.CreatePublicationRequest;
 import emc.mapIt.dto.EnrollmentDto;
+import emc.mapIt.dto.PublicationAccessRequestResponse;
 import emc.mapIt.dto.PublicationEnrollmentResponse;
 import emc.mapIt.dto.PublicationResponse;
 import emc.mapIt.entity.LocationType;
 import emc.mapIt.entity.Publication;
+import emc.mapIt.entity.PublicationAccessRequest;
+import emc.mapIt.entity.PublicationAccessRequestStatus;
 import emc.mapIt.entity.PublicationEnrollment;
+import emc.mapIt.entity.PublicationInvitation;
 import emc.mapIt.entity.PublicationInvitationStatus;
 import emc.mapIt.entity.PublicationVisibility;
 import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
-import emc.mapIt.groups.GroupJoinRequestResponse;
 import emc.mapIt.groups.GroupMembershipSummary;
 import emc.mapIt.groups.GroupService;
 import emc.mapIt.mapper.PublicationMapper;
+import emc.mapIt.notifications.NotificationService;
+import emc.mapIt.repository.PublicationAccessRequestRepository;
 import emc.mapIt.repository.PublicationEnrollmentRepository;
 import emc.mapIt.repository.LocationTypeRepository;
 import emc.mapIt.repository.PublicationInvitationRepository;
@@ -29,6 +35,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
@@ -54,10 +61,13 @@ public class PublicationService {
     private final PublicationRepository publicationRepository;
     private final PublicationEnrollmentRepository publicationEnrollmentRepository;
     private final PublicationInvitationRepository publicationInvitationRepository;
+    private final PublicationAccessRequestRepository publicationAccessRequestRepository;
     private final UserRepository userRepository;
     private final LocationTypeRepository locationTypeRepository;
     private final PublicationMapper publicationMapper;
     private final GroupService groupService;
+    private final UserService userService;
+    private final NotificationService notificationService;
     private final PublicationInvitationDispatcher publicationInvitationDispatcher;
 
     /**
@@ -66,18 +76,24 @@ public class PublicationService {
     public PublicationService(PublicationRepository publicationRepository,
             PublicationEnrollmentRepository publicationEnrollmentRepository,
             PublicationInvitationRepository publicationInvitationRepository,
+            PublicationAccessRequestRepository publicationAccessRequestRepository,
             UserRepository userRepository,
             LocationTypeRepository locationTypeRepository,
             PublicationMapper publicationMapper,
             GroupService groupService,
+            UserService userService,
+            NotificationService notificationService,
             PublicationInvitationDispatcher publicationInvitationDispatcher) {
         this.publicationRepository = publicationRepository;
         this.publicationEnrollmentRepository = publicationEnrollmentRepository;
         this.publicationInvitationRepository = publicationInvitationRepository;
+        this.publicationAccessRequestRepository = publicationAccessRequestRepository;
         this.userRepository = userRepository;
         this.locationTypeRepository = locationTypeRepository;
         this.publicationMapper = publicationMapper;
         this.groupService = groupService;
+        this.userService = userService;
+        this.notificationService = notificationService;
         this.publicationInvitationDispatcher = publicationInvitationDispatcher;
     }
 
@@ -429,15 +445,16 @@ public class PublicationService {
     }
 
     /**
-     * Solicita acceso al grupo de una publicación privada, para poder apuntarse después. Delega
-     * en {@link GroupService#requestToJoin} — la solicitud vive en el dominio Grupos, esta
-     * publicación solo queda como referencia de trazabilidad.
+     * Solicita apuntarse a una publicación privada de la que no se tiene acceso todavía. La
+     * solicitud es de la publicación, no de ningún grupo — la aprueba el autor, no un
+     * organizador, ya que una publicación privada "solo invitados" puede no tener grupo
+     * vinculado en absoluto (ver {@link PublicationAccessRequest}).
      *
      * @param publicationId id de la publicación privada
      * @param userId        id del usuario autenticado que solicita
      * @return solicitud de acceso creada
      */
-    public GroupJoinRequestResponse requestAccess(String publicationId, String userId) {
+    public PublicationAccessRequestResponse requestAccess(String publicationId, String userId) {
         if (publicationId == null) {
             throw new ApiException("BAD_REQUEST", "ID de publicación requerido", HttpStatus.BAD_REQUEST);
         }
@@ -451,8 +468,150 @@ public class PublicationService {
         if (publication.getVisibility() != PublicationVisibility.PRIVATE_GROUP) {
             throw new ApiException("BAD_REQUEST", "Esta publicación no requiere invitación", HttpStatus.BAD_REQUEST);
         }
+        if (userId.equals(publication.getAuthorId())) {
+            throw new ApiException("BAD_REQUEST", "Ya eres el autor de esta publicación", HttpStatus.BAD_REQUEST);
+        }
+        if (groupService.isMember(publication.getGroupId(), userId)
+                || publicationInvitationRepository.existsByPublicationIdAndInvitedUserIdAndStatusNot(
+                        publicationId, userId, PublicationInvitationStatus.DECLINED)) {
+            throw new ApiException("ALREADY_HAS_ACCESS", "Ya tienes acceso a esta publicación", HttpStatus.CONFLICT);
+        }
+        if (publicationAccessRequestRepository.existsByPublicationIdAndRequestedByUserIdAndStatus(
+                publicationId, userId, PublicationAccessRequestStatus.PENDING)) {
+            throw new ApiException("ALREADY_REQUESTED", "Ya has solicitado acceso a esta publicación",
+                    HttpStatus.CONFLICT);
+        }
 
-        return groupService.requestToJoin(userId, publication.getGroupId(), publicationId);
+        MapItUser requester = userService.getByIdOrThrow(userId);
+
+        PublicationAccessRequest request = new PublicationAccessRequest();
+        request.setPublicationId(publicationId);
+        request.setRequestedByUserId(userId);
+        request.setStatus(PublicationAccessRequestStatus.PENDING);
+        request.setCreatedAt(Instant.now());
+        PublicationAccessRequest saved = publicationAccessRequestRepository.save(request);
+
+        MapItUser author = userService.getByIdOrThrow(publication.getAuthorId());
+        notificationService.notifyPublicationAccessRequest(author, publication.getTitle(), requester);
+
+        log.info("Solicitud de acceso creada requestId={} publicationId={} requestedByUserId={}",
+                saved.getId(), publicationId, userId);
+
+        return buildAccessRequestResponse(saved, publication, requester);
+    }
+
+    /**
+     * Lista las solicitudes de acceso pendientes de una publicación. Solo el autor (o un ADMIN)
+     * puede verlas.
+     *
+     * @param publicationId id de la publicación
+     * @param requesterId   id del usuario autenticado que consulta (autor o ADMIN)
+     * @return solicitudes pendientes, más recientes primero
+     */
+    @Transactional(readOnly = true)
+    public List<PublicationAccessRequestResponse> getPendingAccessRequests(String publicationId, String requesterId) {
+        Publication publication = publicationRepository.findById(publicationId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
+
+        requireAuthorOrAdmin(publication, requesterId, "ver las solicitudes de acceso de esta publicación");
+
+        return publicationAccessRequestRepository
+                .findByPublicationIdAndStatus(publicationId, PublicationAccessRequestStatus.PENDING)
+                .stream()
+                .map(request -> buildAccessRequestResponse(request, publication,
+                        userService.getByIdOrThrow(request.getRequestedByUserId())))
+                .sorted(Comparator.comparing(PublicationAccessRequestResponse::createdAt).reversed())
+                .toList();
+    }
+
+    /**
+     * Acepta una solicitud de acceso. Solo el autor de la publicación (o un ADMIN) puede
+     * hacerlo. El acceso concedido se materializa como una {@link PublicationInvitation} ya
+     * {@code ACCEPTED} — mismo mecanismo que una invitación directa del autor, para que
+     * {@link #enroll} no necesite un tercer camino de comprobación de acceso.
+     *
+     * @param requestId   id de la solicitud
+     * @param requesterId id del usuario autenticado (autor de la publicación, o ADMIN)
+     * @return solicitud actualizada
+     */
+    public PublicationAccessRequestResponse acceptAccessRequest(String requestId, String requesterId) {
+        PublicationAccessRequest request = publicationAccessRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Solicitud no encontrada", HttpStatus.NOT_FOUND));
+        Publication publication = publicationRepository.findById(request.getPublicationId())
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
+
+        requireAuthorOrAdmin(publication, requesterId, "aceptar esta solicitud de acceso");
+
+        if (request.getStatus() != PublicationAccessRequestStatus.PENDING) {
+            throw new ApiException("CONFLICT", "Esta solicitud ya ha sido resuelta", HttpStatus.CONFLICT);
+        }
+
+        request.setStatus(PublicationAccessRequestStatus.ACCEPTED);
+        request.setRespondedAt(Instant.now());
+        PublicationAccessRequest saved = publicationAccessRequestRepository.save(request);
+
+        PublicationInvitation invitation = new PublicationInvitation();
+        invitation.setPublicationId(publication.getId());
+        invitation.setInvitedUserId(request.getRequestedByUserId());
+        invitation.setInvitedByUserId(requesterId);
+        invitation.setStatus(PublicationInvitationStatus.ACCEPTED);
+        invitation.setCreatedAt(Instant.now());
+        publicationInvitationRepository.save(invitation);
+
+        MapItUser requester = userService.getByIdOrThrow(request.getRequestedByUserId());
+        notificationService.notifyPublicationAccessRequestResolved(requester, publication.getTitle(), true);
+
+        log.info("Solicitud de acceso aceptada requestId={} publicationId={} requestedByUserId={}",
+                saved.getId(), publication.getId(), request.getRequestedByUserId());
+
+        return buildAccessRequestResponse(saved, publication, requester);
+    }
+
+    /**
+     * Rechaza una solicitud de acceso. Solo el autor de la publicación (o un ADMIN) puede
+     * hacerlo.
+     *
+     * @param requestId   id de la solicitud
+     * @param requesterId id del usuario autenticado (autor de la publicación, o ADMIN)
+     * @return solicitud actualizada
+     */
+    public PublicationAccessRequestResponse rejectAccessRequest(String requestId, String requesterId) {
+        PublicationAccessRequest request = publicationAccessRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Solicitud no encontrada", HttpStatus.NOT_FOUND));
+        Publication publication = publicationRepository.findById(request.getPublicationId())
+                .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
+
+        requireAuthorOrAdmin(publication, requesterId, "rechazar esta solicitud de acceso");
+
+        if (request.getStatus() != PublicationAccessRequestStatus.PENDING) {
+            throw new ApiException("CONFLICT", "Esta solicitud ya ha sido resuelta", HttpStatus.CONFLICT);
+        }
+
+        request.setStatus(PublicationAccessRequestStatus.REJECTED);
+        request.setRespondedAt(Instant.now());
+        PublicationAccessRequest saved = publicationAccessRequestRepository.save(request);
+
+        MapItUser requester = userService.getByIdOrThrow(request.getRequestedByUserId());
+        notificationService.notifyPublicationAccessRequestResolved(requester, publication.getTitle(), false);
+
+        log.info("Solicitud de acceso rechazada requestId={} publicationId={} requestedByUserId={}",
+                saved.getId(), publication.getId(), request.getRequestedByUserId());
+
+        return buildAccessRequestResponse(saved, publication, requester);
+    }
+
+    private PublicationAccessRequestResponse buildAccessRequestResponse(PublicationAccessRequest request,
+            Publication publication, MapItUser requester) {
+        return new PublicationAccessRequestResponse(
+                request.getId(),
+                request.getPublicationId(),
+                publication.getTitle(),
+                request.getRequestedByUserId(),
+                requester.getName(),
+                requester.getNick(),
+                request.getStatus(),
+                request.getCreatedAt(),
+                request.getRespondedAt());
     }
 
     private void requireAuthorOrAdmin(Publication publication, String requesterId, String action) {

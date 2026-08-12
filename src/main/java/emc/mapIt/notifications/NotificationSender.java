@@ -118,4 +118,42 @@ public interface NotificationSender {
      * @param invitedByName    nombre de quien envía la invitación
      */
     void sendPublicationInvitationEmail(String to, String userName, String publicationTitle, String invitedByName);
+
+    /**
+     * Notifica al autor de una publicación privada de que alguien ha solicitado apuntarse.
+     *
+     * @param to               destino del autor (hoy: dirección de email)
+     * @param authorName       nombre del autor, para personalizar el mensaje
+     * @param publicationTitle título de la publicación
+     * @param requesterName    nombre de quien solicita acceso
+     */
+    void sendPublicationAccessRequestEmail(String to, String authorName, String publicationTitle,
+            String requesterName);
+
+    /**
+     * Notifica a quien solicitó acceso a una publicación privada de que su solicitud ha sido
+     * resuelta.
+     *
+     * @param to               destino de quien solicitó (hoy: dirección de email)
+     * @param requesterName    nombre de quien solicitó, para personalizar el mensaje
+     * @param publicationTitle título de la publicación
+     * @param accepted         {@code true} si se aceptó, {@code false} si se rechazó
+     */
+    void sendPublicationAccessRequestResolvedEmail(String to, String requesterName, String publicationTitle,
+            boolean accepted);
+
+    /**
+     * Notifica a una cuenta administradora de un feedback (bug/sugerencia/otro) enviado por un
+     * usuario al equipo de desarrollo.
+     *
+     * @param to             destino de la cuenta administradora (hoy: dirección de email)
+     * @param category       categoría elegida por el remitente ({@code BUG}, {@code SUGGESTION}
+     *                       u {@code OTHER})
+     * @param fromUserName   nombre del usuario que envía el feedback
+     * @param fromUserEmail  email del usuario que envía el feedback, para poder responderle
+     * @param subject        asunto elegido por el remitente
+     * @param message        mensaje escrito por el remitente
+     */
+    void sendDeveloperFeedbackEmail(String to, String category, String fromUserName, String fromUserEmail,
+            String subject, String message);
 }
