@@ -265,26 +265,22 @@ public class UserController {
      * por publicaciones activas.
      * </p>
      *
-     * @param id         identificador del usuario
-     * @param activeOnly si true, solo devuelve publicaciones activas (por defecto:
-     *                   true)
+     * @param id            identificador del usuario
+     * @param activeOnly    si true, solo devuelve publicaciones activas (por defecto:
+     *                      true)
+     * @param authorization cabecera Authorization con JWT, opcional — ruta pública; el viewer
+     *                      resuelto determina si las publicaciones {@code PRIVATE} del usuario se
+     *                      devuelven con contenido enmascarado o excluidas (anónimo)
      * @return lista de publicaciones del usuario
      * @throws ApiException con código NOT_FOUND si el usuario no existe
-     *
-     * @return lista de publicaciones serializables
      */
     @GetMapping("/{id}/publications")
     public List<PublicationResponse> getUserPublications(@PathVariable String id,
-            @RequestParam(defaultValue = "true") boolean activeOnly) {
+            @RequestParam(defaultValue = "true") boolean activeOnly,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.debug("Lectura de publicaciones usuario id={}, activeOnly={}", id, activeOnly);
         userService.getByIdOrThrow(id);
-        // Sin cabecera Authorization en esta ruta: se asume que "id" es siempre el propio usuario
-        // consultando sus publicaciones (el frontend solo la usa para "mis publicaciones"), así
-        // que se pasa como viewerId — un autor siempre es miembro/organizador de cualquier grupo
-        // que use en sus publicaciones privadas, por lo que nunca se le enmascara su propio aforo.
-        // Si esta ruta llegara a reutilizarse para el perfil público de un tercero, hay que
-        // resolver aquí el viewer real de la sesión en vez de asumir que es "id".
-        return publicationService.findByAuthor(id, activeOnly, id);
+        return publicationService.findByAuthor(id, activeOnly, authService.resolveUserIdOrNull(authorization));
     }
 
     /**

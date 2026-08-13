@@ -18,8 +18,6 @@ import emc.mapIt.entity.PublicationVisibility;
 import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
-import emc.mapIt.groups.GroupMembershipSummary;
-import emc.mapIt.groups.GroupService;
 import emc.mapIt.mapper.PublicationMapper;
 import emc.mapIt.notifications.NotificationService;
 import emc.mapIt.repository.PublicationAccessRequestRepository;
@@ -65,7 +63,6 @@ public class PublicationService {
     private final UserRepository userRepository;
     private final LocationTypeRepository locationTypeRepository;
     private final PublicationMapper publicationMapper;
-    private final GroupService groupService;
     private final UserService userService;
     private final NotificationService notificationService;
     private final PublicationInvitationDispatcher publicationInvitationDispatcher;
@@ -80,7 +77,6 @@ public class PublicationService {
             UserRepository userRepository,
             LocationTypeRepository locationTypeRepository,
             PublicationMapper publicationMapper,
-            GroupService groupService,
             UserService userService,
             NotificationService notificationService,
             PublicationInvitationDispatcher publicationInvitationDispatcher) {
@@ -91,7 +87,6 @@ public class PublicationService {
         this.userRepository = userRepository;
         this.locationTypeRepository = locationTypeRepository;
         this.publicationMapper = publicationMapper;
-        this.groupService = groupService;
         this.userService = userService;
         this.notificationService = notificationService;
         this.publicationInvitationDispatcher = publicationInvitationDispatcher;
@@ -152,20 +147,6 @@ public class PublicationService {
             throw new ApiException("BAD_REQUEST", "La fecha de inicio es obligatoria", HttpStatus.BAD_REQUEST);
         }
 
-        PublicationVisibility visibility = request.visibility() != null
-                ? request.visibility() : PublicationVisibility.PUBLIC;
-        boolean hasGroupId = request.groupId() != null && !request.groupId().isBlank();
-        // groupId es opcional incluso en PRIVATE_GROUP: una publicación privada puede nacer
-        // "solo invitados" (sin grupo vinculado), confiando únicamente en inviteUserIds — el
-        // organizador puede vincularla a un grupo más adelante desde la edición. Si se informa,
-        // sigue exigiendo que sea un grupo propio.
-        if (visibility == PublicationVisibility.PRIVATE_GROUP && hasGroupId
-                && !groupService.isOrganizer(request.groupId(), authorId)) {
-            throw new ApiException("FORBIDDEN",
-                    "Solo puedes crear publicaciones privadas para grupos que organizas",
-                    HttpStatus.FORBIDDEN);
-        }
-
         log.debug("LocationType resuelto para alta publication id={} name={}", locationType.getId(),
                 locationType.getName());
 
@@ -198,8 +179,9 @@ public class PublicationService {
 
         // Las invitaciones se envían en segundo plano (ver PublicationInvitationDispatcher): no
         // bloquean esta respuesta, que ya puede devolver la publicación como creada. No depende
-        // de la visibilidad — en PUBLIC es solo un aviso, en PRIVATE_GROUP además concede acceso
-        // para apuntarse (ver #enroll).
+        // de la visibilidad — en PUBLIC es solo un aviso, en PRIVATE es el mecanismo de acceso
+        // (ver #enroll). Invitar a los integrantes de un grupo es responsabilidad del cliente
+        // (expandir el grupo a esta misma lista antes de enviar la petición).
         if (request.inviteUserIds() != null && !request.inviteUserIds().isEmpty()) {
             Set<String> invitees = new LinkedHashSet<>(request.inviteUserIds());
             invitees.remove(authorId);
@@ -208,9 +190,8 @@ public class PublicationService {
             }
         }
 
-        // El autor de una publicación privada siempre es organizador (y por tanto miembro) del
-        // grupo — ya validado arriba — así que nunca hay que enmascararle su propia creación.
-        return publicationMapper.toResponse(saved, 1, resolveGroupInfo(saved, authorId));
+        // El autor siempre tiene acceso completo a su propia publicación, sin enmascarado.
+        return publicationMapper.toResponse(saved, 1, true, null);
     }
 
     /**
@@ -218,8 +199,10 @@ public class PublicationService {
      *
      * @param authorId   id del usuario
      * @param activeOnly si true, filtra solo activas
-     * @param viewerId   id de quien consulta (para calcular pertenencia a grupo en publicaciones
-     *                   privadas); puede ser {@code null} si consulta un anónimo
+     * @param viewerId   id de quien consulta (para calcular acceso a publicaciones {@code PRIVATE});
+     *                   puede ser {@code null} si consulta un anónimo — en ese caso las
+     *                   publicaciones {@code PRIVATE} se excluyen por completo, igual que en
+     *                   {@link #findAll(boolean, String)}
      * @return lista de publicaciones serializables
      */
     @Transactional(readOnly = true)
@@ -235,9 +218,8 @@ public class PublicationService {
                 : publicationRepository.findByAuthorId(authorId);
 
         return publications.stream()
-                .map(publication -> publicationMapper.toResponse(publication,
-                        publicationEnrollmentRepository.countByPublicationId(publication.getId()),
-                        resolveGroupInfo(publication, viewerId)))
+                .filter(publication -> viewerId != null || publication.getVisibility() != PublicationVisibility.PRIVATE)
+                .map(publication -> toResponse(publication, viewerId))
                 .toList();
     }
 
@@ -249,9 +231,10 @@ public class PublicationService {
      * </p>
      *
      * @param activeOnly si true, devuelve solo publicaciones activas
-     * @param viewerId   id de quien consulta (para calcular pertenencia a grupo en publicaciones
-     *                   privadas); puede ser {@code null} si consulta un anónimo — las
-     *                   publicaciones privadas siguen siendo visibles, solo se enmascara el aforo
+     * @param viewerId   id de quien consulta; {@code null} si consulta un anónimo — las
+     *                   publicaciones {@code PRIVATE} se excluyen por completo para anónimos (ni
+     *                   siquiera se les muestra el pin); para un viewer autenticado sin acceso se
+     *                   incluyen con el contenido enmascarado (ver {@code PublicationMapper})
      * @return lista de publicaciones serializables
      */
     @Transactional(readOnly = true)
@@ -263,9 +246,8 @@ public class PublicationService {
                 : publicationRepository.findAll();
 
         return publications.stream()
-                .map(publication -> publicationMapper.toResponse(publication,
-                        publicationEnrollmentRepository.countByPublicationId(publication.getId()),
-                        resolveGroupInfo(publication, viewerId)))
+                .filter(publication -> viewerId != null || publication.getVisibility() != PublicationVisibility.PRIVATE)
+                .map(publication -> toResponse(publication, viewerId))
                 .toList();
     }
 
@@ -273,8 +255,8 @@ public class PublicationService {
      * Recupera una publicación por id.
      *
      * @param id       identificador de la publicación
-     * @param viewerId id de quien consulta (para calcular pertenencia a grupo en publicaciones
-     *                 privadas); puede ser {@code null} si consulta un anónimo
+     * @param viewerId id de quien consulta; {@code null} si consulta un anónimo — una publicación
+     *                 {@code PRIVATE} no existe para un anónimo (404, no se confirma su existencia)
      * @return respuesta serializable
      */
     @Transactional(readOnly = true)
@@ -286,8 +268,16 @@ public class PublicationService {
         }
         Publication publication = publicationRepository.findById(id)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
+        if (viewerId == null && publication.getVisibility() == PublicationVisibility.PRIVATE) {
+            throw new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND);
+        }
+        return toResponse(publication, viewerId);
+    }
+
+    private PublicationResponse toResponse(Publication publication, String viewerId) {
         long occupiedSlots = publicationEnrollmentRepository.countByPublicationId(publication.getId());
-        return publicationMapper.toResponse(publication, occupiedSlots, resolveGroupInfo(publication, viewerId));
+        return publicationMapper.toResponse(publication, occupiedSlots,
+                hasAccess(publication, viewerId), accessRequestPending(publication, viewerId));
     }
 
     /**
@@ -322,12 +312,9 @@ public class PublicationService {
             throw new ApiException("CONFLICT", "La publicación ya no está activa", HttpStatus.CONFLICT);
         }
 
-        if (publication.getVisibility() == PublicationVisibility.PRIVATE_GROUP
-                && !groupService.isMember(publication.getGroupId(), userId)
-                && !publicationInvitationRepository.existsByPublicationIdAndInvitedUserIdAndStatusNot(
-                        publicationId, userId, PublicationInvitationStatus.DECLINED)) {
-            throw new ApiException("NOT_GROUP_MEMBER",
-                    "Debes pertenecer al grupo o tener una invitación para apuntarte. Solicita acceso primero.",
+        if (!hasAccess(publication, userId)) {
+            throw new ApiException("NO_ACCESS",
+                    "No tienes acceso a esta publicación privada. Solicita acceso primero.",
                     HttpStatus.FORBIDDEN);
         }
 
@@ -382,15 +369,15 @@ public class PublicationService {
      * Cambia la visibilidad de una publicación existente. Solo el autor o un ADMIN pueden
      * hacerlo.
      * <p>
-     * {@code PRIVATE_GROUP → PUBLIC} siempre está permitido. {@code → PRIVATE_GROUP} (desde
-     * público o desde otro grupo privado) se bloquea si hay inscritos que no son miembros del
-     * grupo destino — perderían acceso en silencio; el creador debe crear una publicación nueva
-     * si quiere una versión restringida.
+     * {@code PRIVATE → PUBLIC} siempre está permitido. {@code → PRIVATE} se bloquea si hay
+     * inscritos que no tendrían acceso bajo el nuevo modelo (no son el autor, ni ADMIN, ni tienen
+     * una invitación no-{@code DECLINED}) — perderían acceso en silencio; el creador debe
+     * invitarlos primero o crear una publicación nueva si quiere una versión restringida.
      * </p>
      *
      * @param publicationId id de la publicación
      * @param requesterId   id del usuario autenticado (autor o ADMIN)
-     * @param request       visibilidad destino y, si aplica, grupo
+     * @param request       visibilidad destino
      * @return publicación actualizada, vista desde el propio autor
      */
     public PublicationResponse changeVisibility(String publicationId, String requesterId, ChangeVisibilityRequest request) {
@@ -411,44 +398,33 @@ public class PublicationService {
 
         if (request.visibility() == PublicationVisibility.PUBLIC) {
             publication.setVisibility(PublicationVisibility.PUBLIC);
-            publication.setGroupId(null);
         } else {
-            if (request.groupId() == null || request.groupId().isBlank()) {
-                throw new ApiException("BAD_REQUEST", "groupId requerido", HttpStatus.BAD_REQUEST);
-            }
-            if (!groupService.isOrganizer(request.groupId(), requesterId)) {
-                throw new ApiException("FORBIDDEN", "Solo puedes usar un grupo que organizas", HttpStatus.FORBIDDEN);
-            }
-
-            Set<String> memberIds = groupService.getMemberUserIds(request.groupId());
             long foreignCount = publicationEnrollmentRepository.findByPublicationId(publicationId).stream()
                     .map(PublicationEnrollment::getUserId)
-                    .filter(userId -> !memberIds.contains(userId))
+                    .filter(userId -> !userId.equals(publication.getAuthorId())
+                            && !publicationInvitationRepository.existsByPublicationIdAndInvitedUserIdAndStatusNot(
+                                    publicationId, userId, PublicationInvitationStatus.DECLINED))
                     .count();
             if (foreignCount > 0) {
                 throw new ApiException("FOREIGN_ENROLLMENTS",
-                        "No puedes limitar esta publicación a ese grupo: hay " + foreignCount
-                                + " persona(s) apuntada(s) que no son miembros. Crea una publicación nueva si quieres"
-                                + " una versión solo para el grupo.",
+                        "No puedes hacer privada esta publicación: hay " + foreignCount
+                                + " persona(s) apuntada(s) sin invitación. Invítalas primero o crea una publicación"
+                                + " nueva si quieres una versión restringida.",
                         HttpStatus.CONFLICT);
             }
 
-            publication.setVisibility(PublicationVisibility.PRIVATE_GROUP);
-            publication.setGroupId(request.groupId());
+            publication.setVisibility(PublicationVisibility.PRIVATE);
         }
 
         Publication saved = publicationRepository.save(publication);
-        long occupiedSlots = publicationEnrollmentRepository.countByPublicationId(publicationId);
         log.info("Visibilidad cambiada publicationId={} requesterId={} visibility={}",
                 publicationId, requesterId, saved.getVisibility());
-        return publicationMapper.toResponse(saved, occupiedSlots, resolveGroupInfo(saved, requesterId));
+        return toResponse(saved, requesterId);
     }
 
     /**
-     * Solicita apuntarse a una publicación privada de la que no se tiene acceso todavía. La
-     * solicitud es de la publicación, no de ningún grupo — la aprueba el autor, no un
-     * organizador, ya que una publicación privada "solo invitados" puede no tener grupo
-     * vinculado en absoluto (ver {@link PublicationAccessRequest}).
+     * Solicita acceso a una publicación privada de la que no se tiene acceso todavía. La aprueba
+     * el autor de la publicación (ver {@link PublicationAccessRequest}).
      *
      * @param publicationId id de la publicación privada
      * @param userId        id del usuario autenticado que solicita
@@ -465,15 +441,13 @@ public class PublicationService {
         Publication publication = publicationRepository.findById(publicationId)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
 
-        if (publication.getVisibility() != PublicationVisibility.PRIVATE_GROUP) {
+        if (publication.getVisibility() != PublicationVisibility.PRIVATE) {
             throw new ApiException("BAD_REQUEST", "Esta publicación no requiere invitación", HttpStatus.BAD_REQUEST);
         }
         if (userId.equals(publication.getAuthorId())) {
             throw new ApiException("BAD_REQUEST", "Ya eres el autor de esta publicación", HttpStatus.BAD_REQUEST);
         }
-        if (groupService.isMember(publication.getGroupId(), userId)
-                || publicationInvitationRepository.existsByPublicationIdAndInvitedUserIdAndStatusNot(
-                        publicationId, userId, PublicationInvitationStatus.DECLINED)) {
+        if (hasAccess(publication, userId)) {
             throw new ApiException("ALREADY_HAS_ACCESS", "Ya tienes acceso a esta publicación", HttpStatus.CONFLICT);
         }
         if (publicationAccessRequestRepository.existsByPublicationIdAndRequestedByUserIdAndStatus(
@@ -626,15 +600,43 @@ public class PublicationService {
     }
 
     /**
-     * Resuelve el resumen de pertenencia al grupo de una publicación privada para el espectador
-     * indicado. {@code null} si la publicación es pública (o {@code visibility} viene {@code null}
-     * — documento legacy anterior a este campo, se trata igual que {@code PUBLIC}).
+     * true si {@code viewerId} puede ver el contenido completo de {@code publication}: siempre en
+     * {@code PUBLIC}; en {@code PRIVATE}, si es el autor, un ADMIN, o tiene una
+     * {@link PublicationInvitation} en estado distinto de {@code DECLINED}. Invitar a los
+     * integrantes de un grupo es solo un atajo de cliente para rellenar {@code inviteUserIds} — la
+     * pertenencia a un grupo nunca es, por sí sola, una vía de acceso.
      */
-    private GroupMembershipSummary resolveGroupInfo(Publication publication, String viewerId) {
-        if (publication.getVisibility() != PublicationVisibility.PRIVATE_GROUP) {
+    private boolean hasAccess(Publication publication, String viewerId) {
+        if (publication.getVisibility() != PublicationVisibility.PRIVATE) {
+            return true;
+        }
+        if (viewerId == null) {
+            return false;
+        }
+        if (viewerId.equals(publication.getAuthorId()) || isAdmin(viewerId)) {
+            return true;
+        }
+        return publicationInvitationRepository.existsByPublicationIdAndInvitedUserIdAndStatusNot(
+                publication.getId(), viewerId, PublicationInvitationStatus.DECLINED);
+    }
+
+    private boolean isAdmin(String userId) {
+        return userRepository.findById(userId)
+                .map(user -> user.getUserType() == UserType.ADMIN)
+                .orElse(false);
+    }
+
+    /**
+     * true si {@code viewerId} tiene una {@link PublicationAccessRequest} pendiente sobre
+     * {@code publication}. {@code null} si la publicación es {@code PUBLIC} o no hay viewer
+     * (anónimo) — en ambos casos no aplica.
+     */
+    private Boolean accessRequestPending(Publication publication, String viewerId) {
+        if (publication.getVisibility() != PublicationVisibility.PRIVATE || viewerId == null) {
             return null;
         }
-        return groupService.getMembershipSummary(publication.getGroupId(), viewerId);
+        return publicationAccessRequestRepository.existsByPublicationIdAndRequestedByUserIdAndStatus(
+                publication.getId(), viewerId, PublicationAccessRequestStatus.PENDING);
     }
 
     /**
@@ -725,8 +727,7 @@ public class PublicationService {
         Publication publication = publicationRepository.findById(publicationId)
                 .orElseThrow(() -> new ApiException("NOT_FOUND", "Publicación no encontrada", HttpStatus.NOT_FOUND));
 
-        if (publication.getVisibility() == PublicationVisibility.PRIVATE_GROUP
-                && !groupService.isMember(publication.getGroupId(), viewerId)) {
+        if (!hasAccess(publication, viewerId)) {
             throw new ApiException("FORBIDDEN", "No puedes ver la lista de apuntados de esta publicación",
                     HttpStatus.FORBIDDEN);
         }

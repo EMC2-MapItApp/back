@@ -6,11 +6,10 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 
 /**
- * Solicitud de un usuario para apuntarse a una publicación {@code PRIVATE_GROUP} de la que no
- * tiene acceso (ni es miembro del grupo vinculado, si lo hay, ni ha sido invitado
- * individualmente). Iniciada por el propio usuario, a diferencia de {@link PublicationInvitation}
- * (iniciada por el autor). La aprueba el autor de la publicación — no el organizador de ningún
- * grupo, ya que una publicación privada "solo invitados" puede no tener grupo vinculado.
+ * Solicitud de un usuario para acceder a una publicación {@code PRIVATE} de la que no tiene
+ * acceso todavía (ni es el autor, ni ADMIN, ni ha sido invitado individualmente). Iniciada por el
+ * propio usuario, a diferencia de {@link PublicationInvitation} (iniciada por el autor). La
+ * aprueba siempre el autor de la publicación.
  * <p>
  * Al aceptarla, {@code PublicationService} materializa el acceso concedido como una
  * {@link PublicationInvitation} ya {@code ACCEPTED} — mismo mecanismo de acceso que una invitación
