@@ -93,24 +93,27 @@ public class UserController {
     }
 
     /**
-     * Recupera el perfil completo de un usuario por su identificador.
-     * <p>
-     * Devuelve toda la información pública del usuario incluyendo capacidades,
-     * nivel, XP y configuraciones específicas según el tipo de usuario.
-     * </p>
+     * Recupera el perfil de un usuario por su identificador. Ruta pública (ver
+     * {@code SecurityConfig}): accesible sin sesión, pero los campos de contacto/perfil privados
+     * ({@code email}, {@code phone}, {@code birthDate}, {@code city}, {@code province}) solo se
+     * incluyen si quien consulta es el propio usuario o un ADMIN — para cualquier otro viewer
+     * (incluido anónimo) llegan a {@code null}. Ver {@link UserService#toPublicResponse}.
      *
-     * @param id identificador único del usuario
-     * @return {@link MapItUserResponse} con información completa del usuario
+     * @param id            identificador único del usuario
+     * @param authorization header de autorización con token JWT, opcional
+     * @return {@link MapItUserResponse} con información del usuario, enmascarada según el viewer
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      *
      * @see MapItUserResponse
      * @see UserService#getByIdOrThrow(UUID)
      */
     @GetMapping("/{id}")
-    public MapItUserResponse getById(@PathVariable String id) {
+    public MapItUserResponse getById(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.debug("Lectura de usuario id={}", id);
         MapItUser user = userService.getByIdOrThrow(id);
-        return userService.toResponse(user);
+        String viewerId = authService.resolveUserIdOrNull(authorization);
+        return userService.toPublicResponse(user, viewerId);
     }
 
     /**

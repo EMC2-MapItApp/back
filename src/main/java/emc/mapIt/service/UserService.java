@@ -403,6 +403,49 @@ public class UserService {
     }
 
     /**
+     * Como {@link #toResponse(MapItUser)}, pero pensado para servir {@code GET /users/{id}},
+     * ruta pública sin sesión (ver {@code SecurityConfig}): enmascara a {@code null} los campos
+     * de contacto/perfil privados ({@code email}, {@code phone}, {@code birthDate}, {@code city},
+     * {@code province}) salvo que {@code viewerId} sea el propio usuario o un ADMIN. Nunca usar
+     * {@link #toResponse(MapItUser)} directamente para un viewer que no sea el propio usuario.
+     *
+     * @param user     usuario a serializar
+     * @param viewerId id de quien consulta; {@code null} si es anónimo
+     * @return DTO de respuesta, con los campos privados a {@code null} si el viewer no tiene
+     *         derecho a verlos
+     */
+    public MapItUserResponse toPublicResponse(MapItUser user, String viewerId) {
+        MapItUserResponse full = toResponse(user);
+        if (viewerId != null && (viewerId.equals(user.getId()) || isAdmin(viewerId))) {
+            return full;
+        }
+        return new MapItUserResponse(
+                full.id(),
+                full.name(),
+                full.nick(),
+                null,
+                full.userType(),
+                full.level(),
+                full.xp(),
+                full.unlockedCapabilities(),
+                full.favoriteLocationTypeIds(),
+                full.avatarUrl(),
+                null,
+                null,
+                null,
+                full.bio(),
+                null,
+                full.createdAt(),
+                full.updatedAt());
+    }
+
+    private boolean isAdmin(String userId) {
+        return userRepository.findById(userId)
+                .map(u -> u.getUserType() == UserType.ADMIN)
+                .orElse(false);
+    }
+
+    /**
      * Convierte entidad JPA a modelo de dominio.
      * <p>
      * Maneja nulos en colecciones de forma segura.

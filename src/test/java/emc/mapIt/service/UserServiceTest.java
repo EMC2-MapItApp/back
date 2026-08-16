@@ -1,0 +1,120 @@
+package emc.mapIt.service;
+
+import emc.mapIt.domain.MapItUser;
+import emc.mapIt.dto.MapItUserResponse;
+import emc.mapIt.entity.User;
+import emc.mapIt.entity.UserType;
+import emc.mapIt.repository.LocationTypeRepository;
+import emc.mapIt.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.time.LocalDate;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+/**
+ * Cubre {@link UserService#toPublicResponse}: la ruta pública {@code GET /users/{id}} no debe
+ * filtrar PII (email, teléfono, fecha de nacimiento, ciudad, provincia) de un usuario a nadie
+ * que no sea el propio usuario o un ADMIN.
+ */
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock private UserRepository userRepository;
+    @Mock private LocationTypeRepository locationTypeRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private PasswordPolicyService passwordPolicyService;
+
+    private UserService userService;
+    private MapItUser target;
+
+    @BeforeEach
+    void setUp() {
+        userService = new UserService(userRepository, locationTypeRepository, passwordEncoder, passwordPolicyService);
+
+        target = new MapItUser();
+        target.setId("user-1");
+        target.setName("Ana");
+        target.setNick("ana");
+        target.setEmail("ana@test.com");
+        target.setUserType(UserType.PARTICULAR);
+        target.setPhone("600000000");
+        target.setCity("Madrid");
+        target.setProvince("Madrid");
+        target.setBio("Hola, soy Ana");
+        target.setBirthDate(LocalDate.of(1990, 1, 1));
+        target.setAvatarUrl("https://example.com/ana.png");
+        target.setLevel(3);
+        target.setXp(120);
+    }
+
+    @Test
+    void toPublicResponse_viewerEsElPropioUsuario_devuelveDatosCompletos() {
+        MapItUserResponse response = userService.toPublicResponse(target, "user-1");
+
+        assertThat(response.email()).isEqualTo("ana@test.com");
+        assertThat(response.phone()).isEqualTo("600000000");
+        assertThat(response.city()).isEqualTo("Madrid");
+        assertThat(response.province()).isEqualTo("Madrid");
+        assertThat(response.birthDate()).isEqualTo(LocalDate.of(1990, 1, 1));
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void toPublicResponse_viewerEsAdmin_devuelveDatosCompletos() {
+        User admin = new User();
+        admin.setId("admin-1");
+        admin.setUserType(UserType.ADMIN);
+        org.mockito.Mockito.when(userRepository.findById("admin-1")).thenReturn(Optional.of(admin));
+
+        MapItUserResponse response = userService.toPublicResponse(target, "admin-1");
+
+        assertThat(response.email()).isEqualTo("ana@test.com");
+        assertThat(response.phone()).isEqualTo("600000000");
+        assertThat(response.birthDate()).isEqualTo(LocalDate.of(1990, 1, 1));
+    }
+
+    @Test
+    void toPublicResponse_viewerEsOtroUsuario_enmascaraCamposPrivados() {
+        User other = new User();
+        other.setId("user-2");
+        other.setUserType(UserType.PARTICULAR);
+        org.mockito.Mockito.when(userRepository.findById("user-2")).thenReturn(Optional.of(other));
+
+        MapItUserResponse response = userService.toPublicResponse(target, "user-2");
+
+        assertThat(response.email()).isNull();
+        assertThat(response.phone()).isNull();
+        assertThat(response.city()).isNull();
+        assertThat(response.province()).isNull();
+        assertThat(response.birthDate()).isNull();
+
+        // Lo que sí es razonable mostrar en un perfil público se conserva.
+        assertThat(response.id()).isEqualTo("user-1");
+        assertThat(response.name()).isEqualTo("Ana");
+        assertThat(response.nick()).isEqualTo("ana");
+        assertThat(response.avatarUrl()).isEqualTo("https://example.com/ana.png");
+        assertThat(response.bio()).isEqualTo("Hola, soy Ana");
+        assertThat(response.level()).isEqualTo(3);
+    }
+
+    @Test
+    void toPublicResponse_viewerAnonimo_enmascaraCamposPrivados() {
+        MapItUserResponse response = userService.toPublicResponse(target, null);
+
+        assertThat(response.email()).isNull();
+        assertThat(response.phone()).isNull();
+        assertThat(response.city()).isNull();
+        assertThat(response.province()).isNull();
+        assertThat(response.birthDate()).isNull();
+        assertThat(response.name()).isEqualTo("Ana");
+        verifyNoInteractions(userRepository);
+    }
+}
