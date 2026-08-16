@@ -5,6 +5,7 @@ import emc.mapIt.entity.LocationType;
 import emc.mapIt.entity.MainCategory;
 import emc.mapIt.entity.SubCategory;
 import emc.mapIt.exception.ApiException;
+import emc.mapIt.service.AuthService;
 import emc.mapIt.service.CategoryCrudService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,8 @@ import java.util.List;
  * <h3>Autenticación</h3>
  * <p>
  * La consulta del árbol de categorías es pública. Las operaciones de modificación (CRUD)
- * podrían requerir permisos de administrador en un futuro, pero actualmente son abiertas.
+ * requieren que quien llama sea {@code ADMIN} (ver {@link AuthService#requireAdmin}) — cualquier
+ * otro usuario autenticado recibe {@code 403 FORBIDDEN}.
  * </p>
  *
  * @author MapIt Development Team
@@ -46,14 +48,18 @@ public class CategoryController {
     private static final Logger log = LoggerFactory.getLogger(CategoryController.class);
 
     private final CategoryCrudService categoryCrudService;
+    private final AuthService authService;
 
     /**
      * Constructor para inyección de dependencias del servicio de categorías.
      *
      * @param categoryCrudService El servicio que encapsula la lógica de negocio para las categorías.
+     * @param authService         servicio de autenticación, usado para exigir rol ADMIN en las
+     *                            operaciones de escritura.
      */
-    public CategoryController(CategoryCrudService categoryCrudService) {
+    public CategoryController(CategoryCrudService categoryCrudService, AuthService authService) {
         this.categoryCrudService = categoryCrudService;
+        this.authService = authService;
     }
 
     /**
@@ -84,7 +90,9 @@ public class CategoryController {
      * @throws ApiException si los datos de la categoría son inválidos o incompletos.
      */
     @PostMapping("/main")
-    public ResponseEntity<MainCategory> createMainCategory(@RequestBody MainCategory mainCategory) {
+    public ResponseEntity<MainCategory> createMainCategory(@RequestBody MainCategory mainCategory,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to create a new main category: {}", mainCategory.getName());
         MainCategory createdCategory = categoryCrudService.createMainCategory(mainCategory);
         return new ResponseEntity<>(createdCategory, HttpStatus.CREATED);
@@ -117,7 +125,9 @@ public class CategoryController {
      * @throws ApiException si los datos proporcionados para la actualización son inválidos.
      */
     @PutMapping("/main/{id}")
-    public ResponseEntity<MainCategory> updateMainCategory(@PathVariable String id, @RequestBody MainCategory mainCategory) {
+    public ResponseEntity<MainCategory> updateMainCategory(@PathVariable String id, @RequestBody MainCategory mainCategory,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to update main category with id={}", id);
         MainCategory updatedCategory = categoryCrudService.updateMainCategory(id, mainCategory);
         return ResponseEntity.ok(updatedCategory);
@@ -131,7 +141,9 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si la categoría no existe.
      */
     @DeleteMapping("/main/{id}")
-    public ResponseEntity<Void> deleteMainCategory(@PathVariable String id) {
+    public ResponseEntity<Void> deleteMainCategory(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to delete main category with id={}", id);
         categoryCrudService.deleteMainCategory(id);
         return ResponseEntity.noContent().build();
@@ -149,7 +161,9 @@ public class CategoryController {
      * @throws ApiException si los datos de la subcategoría son inválidos o incompletos.
      */
     @PostMapping("/{mainCategoryId}/subcategories")
-    public ResponseEntity<SubCategory> createSubCategory(@PathVariable String mainCategoryId, @RequestBody SubCategory subCategory) {
+    public ResponseEntity<SubCategory> createSubCategory(@PathVariable String mainCategoryId, @RequestBody SubCategory subCategory,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to create a new sub category '{}' under main category id={}", subCategory.getName(), mainCategoryId);
         SubCategory createdSubCategory = categoryCrudService.createSubCategory(mainCategoryId, subCategory);
         return new ResponseEntity<>(createdSubCategory, HttpStatus.CREATED);
@@ -183,7 +197,9 @@ public class CategoryController {
      * @throws ApiException si los datos proporcionados para la actualización son inválidos.
      */
     @PutMapping("/subcategories/{id}")
-    public ResponseEntity<SubCategory> updateSubCategory(@PathVariable String id, @RequestBody SubCategory subCategory) {
+    public ResponseEntity<SubCategory> updateSubCategory(@PathVariable String id, @RequestBody SubCategory subCategory,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to update sub category with id={}", id);
         SubCategory updatedSubCategory = categoryCrudService.updateSubCategory(id, subCategory);
         return ResponseEntity.ok(updatedSubCategory);
@@ -197,7 +213,9 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si la subcategoría no existe.
      */
     @DeleteMapping("/subcategories/{id}")
-    public ResponseEntity<Void> deleteSubCategory(@PathVariable String id) {
+    public ResponseEntity<Void> deleteSubCategory(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to delete sub category with id={}", id);
         categoryCrudService.deleteSubCategory(id);
         return ResponseEntity.noContent().build();
@@ -215,7 +233,9 @@ public class CategoryController {
      * @throws ApiException si los datos del tipo de lugar son inválidos o incompletos.
      */
     @PostMapping("/subcategories/{subCategoryId}/locationtypes")
-    public ResponseEntity<LocationType> createLocationType(@PathVariable String subCategoryId, @RequestBody LocationType locationType) {
+    public ResponseEntity<LocationType> createLocationType(@PathVariable String subCategoryId, @RequestBody LocationType locationType,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to create a new location type '{}' under sub category id={}", locationType.getName(), subCategoryId);
         LocationType createdLocationType = categoryCrudService.createLocationType(subCategoryId, locationType);
         return new ResponseEntity<>(createdLocationType, HttpStatus.CREATED);
@@ -249,7 +269,9 @@ public class CategoryController {
      * @throws ApiException si los datos proporcionados para la actualización son inválidos.
      */
     @PutMapping("/locationtypes/{id}")
-    public ResponseEntity<LocationType> updateLocationType(@PathVariable String id, @RequestBody LocationType locationType) {
+    public ResponseEntity<LocationType> updateLocationType(@PathVariable String id, @RequestBody LocationType locationType,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to update location type with id={}", id);
         LocationType updatedLocationType = categoryCrudService.updateLocationType(id, locationType);
         return ResponseEntity.ok(updatedLocationType);
@@ -263,7 +285,9 @@ public class CategoryController {
      * @throws ApiException con código NOT_FOUND si el tipo de lugar no existe.
      */
     @DeleteMapping("/locationtypes/{id}")
-    public ResponseEntity<Void> deleteLocationType(@PathVariable String id) {
+    public ResponseEntity<Void> deleteLocationType(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
+        authService.requireAdmin(authorization);
         log.info("Request to delete location type with id={}", id);
         categoryCrudService.deleteLocationType(id);
         return ResponseEntity.noContent().build();

@@ -6,6 +6,7 @@ import emc.mapIt.dto.AuthRegisterRequest;
 import emc.mapIt.dto.AuthResponse;
 import emc.mapIt.dto.RegisterResponse;
 import emc.mapIt.entity.User;
+import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,6 +149,22 @@ public class AuthService {
 
     public String requireUserId(String authHeader) {
         return jwtService.extractUserId(authHeader);
+    }
+
+    /**
+     * Como {@link #requireUserId}, pero además exige que el usuario autenticado sea
+     * {@link UserType#ADMIN} — usado por operaciones administrativas (p. ej. el CRUD de
+     * categorías) que no deben quedar abiertas a cualquier usuario autenticado.
+     *
+     * @throws ApiException con código FORBIDDEN si el usuario no es ADMIN
+     */
+    public String requireAdmin(String authHeader) {
+        String userId = requireUserId(authHeader);
+        MapItUser user = userService.getByIdOrThrow(userId);
+        if (user.getUserType() != UserType.ADMIN) {
+            throw new ApiException("FORBIDDEN", "Requiere permisos de administrador", HttpStatus.FORBIDDEN);
+        }
+        return userId;
     }
 
     /**
