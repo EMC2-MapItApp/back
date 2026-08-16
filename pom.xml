@@ -130,6 +130,16 @@
 			<version>1.9.0</version>
 		</dependency>
 
+		<!-- Rate limiting en memoria (RateLimitFilter) para /auth/login y /auth/forgot-password.
+		     Solo bucket4j-core: sin backend distribuido (Redis/Hazelcast) porque Cloud Run corre
+		     hoy con una sola instancia — si se escala a varias réplicas, los contadores dejan de
+		     ser exactos entre instancias y hay que revisar esto. -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j-core</artifactId>
+			<version>8.10.1</version>
+		</dependency>
+
 		<!-- Protocolo Web Push (VAPID) para notificaciones nativas del SO (notifications/) -->
 		<dependency>
 			<groupId>nl.martijndwars</groupId>

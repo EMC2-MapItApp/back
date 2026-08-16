@@ -18,15 +18,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * Configuración de Spring Security: API de tokens pura, sin sesiones ni cookies (CSRF
  * deshabilitado, sesión {@code STATELESS}). Declara qué rutas son públicas y cuáles requieren un
  * JWT válido; {@link JwtAuthFilter} es quien valida el token en cada request.
+ * {@link RateLimitFilter} corre antes que ambos y limita por IP los intentos a
+ * {@code /auth/login}/{@code /auth/forgot-password}.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RateLimitFilter rateLimitFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
 
     /** BCrypt para el hash de contraseñas — ver también el límite de 72 bytes en {@code PasswordPolicyService}. */
@@ -95,6 +99,7 @@ public class SecurityConfig {
                     );
                 })
             )
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
