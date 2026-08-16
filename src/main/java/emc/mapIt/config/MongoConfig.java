@@ -1,5 +1,6 @@
 package emc.mapIt.config;
 
+import emc.mapIt.entity.PublicationVisibility;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
@@ -13,9 +14,7 @@ import java.util.Arrays;
 import java.util.Date;
 
 /**
- * Conversores custom para que Spring Data MongoDB sepa serializar/deserializar
- * {@link ZonedDateTime} (MongoDB solo entiende {@link Date}/BSON date, sin zona horaria propia).
- * Se normaliza siempre a UTC en lectura; la zona horaria original no se conserva.
+ * Conversores custom para Spring Data MongoDB.
  */
 @Configuration
 public class MongoConfig {
@@ -24,7 +23,8 @@ public class MongoConfig {
     public MongoCustomConversions mongoCustomConversions() {
         return new MongoCustomConversions(Arrays.asList(
                 new ZonedDateTimeWriteConverter(),
-                new ZonedDateTimeReadConverter()
+                new ZonedDateTimeReadConverter(),
+                new PublicationVisibilityReadConverter()
         ));
     }
 
@@ -43,6 +43,26 @@ public class MongoConfig {
         @Override
         public ZonedDateTime convert(Date source) {
             return source.toInstant().atZone(ZoneOffset.UTC);
+        }
+    }
+
+    /**
+     * Compatibilidad con documentos persistidos antes de eliminar {@code PRIVATE_GROUP} del enum
+     * {@link PublicationVisibility} (commit que sustituyó la visibilidad por grupo por acceso
+     * individual mediante invitaciones). Sin este converter, un solo documento con
+     * {@code visibility: "PRIVATE_GROUP"} hace fallar la deserialización de Spring Data y tumba
+     * cualquier lectura masiva de publicaciones (el mapa completo). El valor legacy se trata como
+     * {@code PRIVATE} — es la lectura más restrictiva de las dos disponibles hoy, y evita
+     * exponer contenido que originalmente se creó como privado.
+     */
+    @ReadingConverter
+    static class PublicationVisibilityReadConverter implements Converter<String, PublicationVisibility> {
+        @Override
+        public PublicationVisibility convert(String source) {
+            if ("PRIVATE_GROUP".equals(source)) {
+                return PublicationVisibility.PRIVATE;
+            }
+            return PublicationVisibility.valueOf(source);
         }
     }
 }
