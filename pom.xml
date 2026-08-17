@@ -159,6 +159,9 @@
 			<artifactId>bcprov-jdk18on</artifactId>
 			<version>1.78.1</version>
 		</dependency>
+		<!-- Requerida en compile-time por nl.martijndwars:web-push: PushService.send() referencia
+		     org.jose4j.lang.JoseException en su firma, aunque este repo no la use directamente
+		     (confirmado con `mvn clean compile` fallando sin esta dependencia explícita). -->
 		<dependency>
 			<groupId>org.bitbucket.b_c</groupId>
 			<artifactId>jose4j</artifactId>

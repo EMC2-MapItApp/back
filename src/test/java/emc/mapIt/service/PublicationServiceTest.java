@@ -308,6 +308,31 @@ class PublicationServiceTest {
     }
 
     @Test
+    void changeVisibility_publicaAPrivadaConAdminAutoinscrito_permiteCambio() {
+        Publication publication = new Publication();
+        publication.setId(PUB_ID);
+        publication.setAuthorId(AUTHOR_ID);
+        publication.setVisibility(PublicationVisibility.PUBLIC);
+        User admin = new User();
+        admin.setId(OTHER_USER_ID);
+        admin.setUserType(UserType.ADMIN);
+
+        when(publicationRepository.findById(PUB_ID)).thenReturn(Optional.of(publication));
+        when(userRepository.findById(AUTHOR_ID)).thenReturn(Optional.of(particularUser(AUTHOR_ID)));
+        when(userRepository.findById(OTHER_USER_ID)).thenReturn(Optional.of(admin));
+        when(publicationEnrollmentRepository.findByPublicationId(PUB_ID)).thenReturn(List.of(
+                new PublicationEnrollment(PUB_ID, OTHER_USER_ID, ZonedDateTime.now(MADRID_ZONE))));
+        when(publicationRepository.save(any(Publication.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        publicationService.changeVisibility(PUB_ID, AUTHOR_ID,
+                new ChangeVisibilityRequest(PublicationVisibility.PRIVATE));
+
+        assertThat(publication.getVisibility()).isEqualTo(PublicationVisibility.PRIVATE);
+        verify(publicationInvitationRepository, never())
+                .existsByPublicationIdAndInvitedUserIdAndStatusNot(any(), any(), any());
+    }
+
+    @Test
     void changeVisibility_noAutorNiAdmin_lanzaForbidden() {
         Publication publication = new Publication();
         publication.setId(PUB_ID);

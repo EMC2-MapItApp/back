@@ -451,6 +451,7 @@ public class PublicationService {
             long foreignCount = publicationEnrollmentRepository.findByPublicationId(publicationId).stream()
                     .map(PublicationEnrollment::getUserId)
                     .filter(userId -> !userId.equals(publication.getAuthorId())
+                            && !isAdmin(userId)
                             && !publicationInvitationRepository.existsByPublicationIdAndInvitedUserIdAndStatusNot(
                                     publicationId, userId, PublicationInvitationStatus.DECLINED))
                     .count();
