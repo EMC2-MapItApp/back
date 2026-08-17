@@ -2,6 +2,7 @@ package emc.mapIt.repository;
 
 import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -35,8 +36,12 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     List<User> findByNameContainingIgnoreCase(String name);
 
-    /** Usado por el buscador de invitación a grupos: coincidencia parcial por nick o email. */
-    List<User> findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(String nick, String email);
+    /**
+     * Usado por el buscador de invitación a grupos: coincidencia parcial por nick o email.
+     * Recibe {@link Pageable} para que el límite de resultados se aplique en la propia query de
+     * Mongo, no sobre el stream completo ya traído a memoria.
+     */
+    List<User> findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(String nick, String email, Pageable pageable);
 
     List<User> findByProfileDetailsXpGreaterThanOrderByProfileDetailsXpDesc(Integer minXp);
 

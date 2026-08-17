@@ -2,6 +2,7 @@ package emc.mapIt.service;
 
 import emc.mapIt.domain.MapItUser;
 import emc.mapIt.dto.MapItUserResponse;
+import emc.mapIt.dto.UserSearchResultResponse;
 import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.repository.LocationTypeRepository;
@@ -9,15 +10,21 @@ import emc.mapIt.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * Cubre {@link UserService#toPublicResponse}: la ruta pública {@code GET /users/{id}} no debe
@@ -116,5 +123,25 @@ class UserServiceTest {
         assertThat(response.birthDate()).isNull();
         assertThat(response.name()).isEqualTo("Ana");
         verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void searchUsers_limitaEnLaQueryMongo_noEnMemoria() {
+        User other = new User();
+        other.setId("user-2");
+        other.setName("Bea");
+        other.setNick("bea");
+        other.setEmail("bea@test.com");
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        when(userRepository.findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                anyString(), anyString(), pageableCaptor.capture()))
+                .thenReturn(List.of(other));
+
+        List<UserSearchResultResponse> results = userService.searchUsers("bea", "user-1");
+
+        assertThat(results).hasSize(1);
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(21);
+        verify(userRepository).findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                "bea", "bea", pageableCaptor.getValue());
     }
 }

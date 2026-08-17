@@ -13,6 +13,7 @@ import emc.mapIt.repository.LocationTypeRepository;
 import emc.mapIt.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -234,7 +235,12 @@ public class UserService {
         }
 
         String trimmed = query.trim();
-        return userRepository.findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(trimmed, trimmed).stream()
+        // +1 en la query Mongo: cubre el caso en que el propio usuario que busca esté entre los
+        // primeros resultados, sin dejar de acotar el tamaño de la respuesta de Mongo.
+        return userRepository
+                .findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                        trimmed, trimmed, PageRequest.of(0, USER_SEARCH_LIMIT + 1))
+                .stream()
                 .filter(user -> !user.getId().equals(excludingUserId))
                 .limit(USER_SEARCH_LIMIT)
                 .map(user -> new UserSearchResultResponse(
