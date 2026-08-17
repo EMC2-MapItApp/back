@@ -15,4 +15,8 @@ public interface PublicationAccessRequestRepository extends MongoRepository<Publ
 
     boolean existsByPublicationIdAndRequestedByUserIdAndStatus(String publicationId, String requestedByUserId,
             PublicationAccessRequestStatus status);
+
+    /** Usado para calcular solicitudes pendientes de un viewer sobre una lista de publicaciones en una sola query. */
+    List<PublicationAccessRequest> findByPublicationIdInAndRequestedByUserIdAndStatus(List<String> publicationIds,
+            String requestedByUserId, PublicationAccessRequestStatus status);
 }

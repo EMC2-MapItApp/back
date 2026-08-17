@@ -466,7 +466,6 @@ class PublicationServiceTest {
         when(publicationRepository.findByActiveTrueAndEndDateBefore(any())).thenReturn(List.of());
         when(publicationRepository.findByActiveTrueOrderByStartDateDesc())
                 .thenReturn(List.of(publicaPub, privadaPub));
-        when(publicationEnrollmentRepository.countByPublicationId(any())).thenReturn(0L);
 
         publicationService.findAll(true, null);
 
@@ -496,7 +495,6 @@ class PublicationServiceTest {
         when(publicationRepository.findByActiveTrueAndEndDateBefore(any())).thenReturn(List.of());
         when(publicationRepository.findByAuthorIdAndActiveTrue(AUTHOR_ID))
                 .thenReturn(List.of(publicaPub, privadaPub));
-        when(publicationEnrollmentRepository.countByPublicationId(any())).thenReturn(0L);
 
         publicationService.findByAuthor(AUTHOR_ID, true, null);
 
@@ -510,13 +508,49 @@ class PublicationServiceTest {
 
         when(publicationRepository.findByActiveTrueAndEndDateBefore(any())).thenReturn(List.of());
         when(publicationRepository.findByAuthorIdAndActiveTrue(AUTHOR_ID)).thenReturn(List.of(privadaPub));
-        when(publicationEnrollmentRepository.countByPublicationId(any())).thenReturn(0L);
-        when(publicationInvitationRepository.existsByPublicationIdAndInvitedUserIdAndStatusNot(
-                PUB_ID, OTHER_USER_ID, PublicationInvitationStatus.DECLINED)).thenReturn(false);
         when(userRepository.findById(OTHER_USER_ID)).thenReturn(Optional.of(particularUser(OTHER_USER_ID)));
 
         publicationService.findByAuthor(AUTHOR_ID, true, OTHER_USER_ID);
 
         verify(publicationMapper).toResponse(eq(privadaPub), anyLong(), eq(false), any());
+    }
+
+    @Test
+    void findAll_variasPublicacionesPrivadas_resuelveAccesoConQueriesBatchNoPorPublicacion() {
+        Publication invitada = privatePublication();
+        Publication noInvitada = privatePublication();
+        noInvitada.setId("pub-2");
+
+        PublicationInvitation invitacion = new PublicationInvitation();
+        invitacion.setPublicationId(PUB_ID);
+        invitacion.setInvitedUserId(OTHER_USER_ID);
+        invitacion.setStatus(PublicationInvitationStatus.ACCEPTED);
+
+        when(publicationRepository.findByActiveTrueAndEndDateBefore(any())).thenReturn(List.of());
+        when(publicationRepository.findByActiveTrueOrderByStartDateDesc())
+                .thenReturn(List.of(invitada, noInvitada));
+        when(publicationInvitationRepository.findByPublicationIdInAndInvitedUserIdAndStatusNot(
+                eq(List.of(PUB_ID, "pub-2")), eq(OTHER_USER_ID), eq(PublicationInvitationStatus.DECLINED)))
+                .thenReturn(List.of(invitacion));
+        when(userRepository.findById(OTHER_USER_ID)).thenReturn(Optional.of(particularUser(OTHER_USER_ID)));
+
+        publicationService.findAll(true, OTHER_USER_ID);
+
+        verify(publicationMapper).toResponse(eq(invitada), anyLong(), eq(true), any());
+        verify(publicationMapper).toResponse(eq(noInvitada), anyLong(), eq(false), any());
+
+        // Una sola query batch por colección, no una por publicación (2 publicaciones privadas).
+        verify(publicationEnrollmentRepository, times(1)).findByPublicationIdIn(any());
+        verify(publicationEnrollmentRepository, never()).countByPublicationId(any());
+        verify(publicationInvitationRepository, times(1))
+                .findByPublicationIdInAndInvitedUserIdAndStatusNot(any(), any(), any());
+        verify(publicationInvitationRepository, never())
+                .existsByPublicationIdAndInvitedUserIdAndStatusNot(any(), any(), any());
+        verify(publicationAccessRequestRepository, times(1))
+                .findByPublicationIdInAndRequestedByUserIdAndStatus(any(), any(), any());
+        verify(publicationAccessRequestRepository, never())
+                .existsByPublicationIdAndRequestedByUserIdAndStatus(any(), any(), any());
+        // isAdmin() se resuelve una vez para toda la lista, no una vez por publicación.
+        verify(userRepository, times(1)).findById(OTHER_USER_ID);
     }
 }

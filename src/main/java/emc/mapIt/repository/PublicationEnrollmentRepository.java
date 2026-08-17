@@ -17,5 +17,8 @@ public interface PublicationEnrollmentRepository extends MongoRepository<Publica
 
     List<PublicationEnrollment> findByPublicationId(String publicationId);
 
+    /** Usado para calcular plazas ocupadas de una lista de publicaciones en una sola query. */
+    List<PublicationEnrollment> findByPublicationIdIn(List<String> publicationIds);
+
     Optional<PublicationEnrollment> findByPublicationIdAndUserId(String publicationId, String userId);
 }

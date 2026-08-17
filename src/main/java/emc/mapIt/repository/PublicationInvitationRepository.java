@@ -14,4 +14,8 @@ public interface PublicationInvitationRepository extends MongoRepository<Publica
 
     boolean existsByPublicationIdAndInvitedUserIdAndStatusNot(String publicationId, String invitedUserId,
             PublicationInvitationStatus status);
+
+    /** Usado para calcular acceso de un viewer sobre una lista de publicaciones en una sola query. */
+    List<PublicationInvitation> findByPublicationIdInAndInvitedUserIdAndStatusNot(List<String> publicationIds,
+            String invitedUserId, PublicationInvitationStatus status);
 }

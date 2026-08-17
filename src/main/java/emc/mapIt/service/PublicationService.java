@@ -39,7 +39,9 @@ import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Servicio de aplicación para publicaciones persistidas.
@@ -217,10 +219,10 @@ public class PublicationService {
                 ? publicationRepository.findByAuthorIdAndActiveTrue(authorId)
                 : publicationRepository.findByAuthorId(authorId);
 
-        return publications.stream()
+        List<Publication> visible = publications.stream()
                 .filter(publication -> viewerId != null || publication.getVisibility() != PublicationVisibility.PRIVATE)
-                .map(publication -> toResponse(publication, viewerId))
                 .toList();
+        return toResponses(visible, viewerId);
     }
 
     /**
@@ -245,10 +247,10 @@ public class PublicationService {
                 ? publicationRepository.findByActiveTrueOrderByStartDateDesc()
                 : publicationRepository.findAll();
 
-        return publications.stream()
+        List<Publication> visible = publications.stream()
                 .filter(publication -> viewerId != null || publication.getVisibility() != PublicationVisibility.PRIVATE)
-                .map(publication -> toResponse(publication, viewerId))
                 .toList();
+        return toResponses(visible, viewerId);
     }
 
     /**
@@ -278,6 +280,53 @@ public class PublicationService {
         long occupiedSlots = publicationEnrollmentRepository.countByPublicationId(publication.getId());
         return publicationMapper.toResponse(publication, occupiedSlots,
                 hasAccess(publication, viewerId), accessRequestPending(publication, viewerId));
+    }
+
+    /**
+     * Igual que {@link #toResponse(Publication, String)} pero para una lista completa: en vez de
+     * una query de plazas/invitaciones/solicitudes por publicación (N+1, notable en
+     * {@link #findAll} y {@link #findByAuthor}), trae los tres datos en una query batch por
+     * colección y los consulta en memoria dentro del mapeo.
+     */
+    private List<PublicationResponse> toResponses(List<Publication> publications, String viewerId) {
+        if (publications.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> publicationIds = publications.stream().map(Publication::getId).toList();
+        Map<String, Long> occupiedSlotsByPublicationId = publicationEnrollmentRepository
+                .findByPublicationIdIn(publicationIds).stream()
+                .collect(Collectors.groupingBy(PublicationEnrollment::getPublicationId, Collectors.counting()));
+
+        List<String> privatePublicationIds = publications.stream()
+                .filter(publication -> publication.getVisibility() == PublicationVisibility.PRIVATE)
+                .map(Publication::getId)
+                .toList();
+
+        boolean viewerIsAdmin = viewerId != null && !privatePublicationIds.isEmpty() && isAdmin(viewerId);
+        Set<String> invitedPublicationIds = viewerId == null || privatePublicationIds.isEmpty()
+                ? Set.of()
+                : publicationInvitationRepository
+                        .findByPublicationIdInAndInvitedUserIdAndStatusNot(
+                                privatePublicationIds, viewerId, PublicationInvitationStatus.DECLINED)
+                        .stream()
+                        .map(PublicationInvitation::getPublicationId)
+                        .collect(Collectors.toSet());
+        Set<String> pendingAccessRequestPublicationIds = viewerId == null || privatePublicationIds.isEmpty()
+                ? Set.of()
+                : publicationAccessRequestRepository
+                        .findByPublicationIdInAndRequestedByUserIdAndStatus(
+                                privatePublicationIds, viewerId, PublicationAccessRequestStatus.PENDING)
+                        .stream()
+                        .map(PublicationAccessRequest::getPublicationId)
+                        .collect(Collectors.toSet());
+
+        return publications.stream()
+                .map(publication -> publicationMapper.toResponse(publication,
+                        occupiedSlotsByPublicationId.getOrDefault(publication.getId(), 0L),
+                        hasAccess(publication, viewerId, viewerIsAdmin, invitedPublicationIds),
+                        accessRequestPending(publication, viewerId, pendingAccessRequestPublicationIds)))
+                .toList();
     }
 
     /**
@@ -620,6 +669,21 @@ public class PublicationService {
                 publication.getId(), viewerId, PublicationInvitationStatus.DECLINED);
     }
 
+    /** Variante de {@link #hasAccess(Publication, String)} para listas, ver {@link #toResponses}. */
+    private boolean hasAccess(Publication publication, String viewerId, boolean viewerIsAdmin,
+            Set<String> invitedPublicationIds) {
+        if (publication.getVisibility() != PublicationVisibility.PRIVATE) {
+            return true;
+        }
+        if (viewerId == null) {
+            return false;
+        }
+        if (viewerId.equals(publication.getAuthorId()) || viewerIsAdmin) {
+            return true;
+        }
+        return invitedPublicationIds.contains(publication.getId());
+    }
+
     private boolean isAdmin(String userId) {
         return userRepository.findById(userId)
                 .map(user -> user.getUserType() == UserType.ADMIN)
@@ -637,6 +701,15 @@ public class PublicationService {
         }
         return publicationAccessRequestRepository.existsByPublicationIdAndRequestedByUserIdAndStatus(
                 publication.getId(), viewerId, PublicationAccessRequestStatus.PENDING);
+    }
+
+    /** Variante de {@link #accessRequestPending(Publication, String)} para listas, ver {@link #toResponses}. */
+    private Boolean accessRequestPending(Publication publication, String viewerId,
+            Set<String> pendingAccessRequestPublicationIds) {
+        if (publication.getVisibility() != PublicationVisibility.PRIVATE || viewerId == null) {
+            return null;
+        }
+        return pendingAccessRequestPublicationIds.contains(publication.getId());
     }
 
     /**
