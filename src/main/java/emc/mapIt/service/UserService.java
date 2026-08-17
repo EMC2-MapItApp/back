@@ -247,9 +247,28 @@ public class UserService {
                         user.getId(),
                         user.getName(),
                         user.getNick(),
-                        user.getEmail(),
+                        maskEmail(user.getEmail()),
                         user.getProfileDetails() != null ? user.getProfileDetails().getAvatarUrl() : null))
                 .toList();
+    }
+
+    /**
+     * Enmascara un email para el buscador de invitación a grupos: suficiente para que quien
+     * busca desambigüe entre varios resultados con nick parecido, sin exponer la dirección
+     * completa de un usuario distinto al que busca.
+     * <p>
+     * {@code eusebio.montero@gmail.com} → {@code eu***ro@gmail.com}. Con parte local de menos de
+     * 4 caracteres (donde los 2 primeros y los 2 últimos se solaparían) se oculta entera.
+     * </p>
+     */
+    private static String maskEmail(String email) {
+        int at = email.indexOf('@');
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        if (local.length() < 4) {
+            return "***" + domain;
+        }
+        return local.substring(0, 2) + "***" + local.substring(local.length() - 2) + domain;
     }
 
     /**

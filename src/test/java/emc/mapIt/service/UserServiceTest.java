@@ -144,4 +144,37 @@ class UserServiceTest {
         verify(userRepository).findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(
                 "bea", "bea", pageableCaptor.getValue());
     }
+
+    @Test
+    void searchUsers_enmascaraElEmailDeCadaResultado() {
+        User other = new User();
+        other.setId("user-2");
+        other.setName("Eusebio");
+        other.setNick("euse");
+        other.setEmail("eusebio.montero@gmail.com");
+        when(userRepository.findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                anyString(), anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(other));
+
+        List<UserSearchResultResponse> results = userService.searchUsers("euse", "user-1");
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).email()).isEqualTo("eu***ro@gmail.com");
+    }
+
+    @Test
+    void searchUsers_enmascaraPorCompletoUnaParteLocalCorta() {
+        User other = new User();
+        other.setId("user-2");
+        other.setName("Bea");
+        other.setNick("bea");
+        other.setEmail("bea@test.com");
+        when(userRepository.findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                anyString(), anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(List.of(other));
+
+        List<UserSearchResultResponse> results = userService.searchUsers("bea", "user-1");
+
+        assertThat(results.get(0).email()).isEqualTo("***@test.com");
+    }
 }
