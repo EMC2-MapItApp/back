@@ -14,16 +14,26 @@ public final class ClientIpResolver {
 
     /**
      * @param request request HTTP entrante
-     * @return {@code X-Forwarded-For} (primer salto de la cadena, el cliente original) si está
-     *         presente; si no, {@code X-Real-IP}; si no, {@code request.getRemoteAddr()}.
-     *         {@code "127.0.0.1"} como último recurso si ninguna fuente da un valor usable.
+     * @return {@code X-Forwarded-For} (último salto de la cadena) si está presente; si no,
+     *         {@code X-Real-IP}; si no, {@code request.getRemoteAddr()}. {@code "127.0.0.1"}
+     *         como último recurso si ninguna fuente da un valor usable.
+     *         <p>
+     *         Se toma el <b>último</b> valor, no el primero: este backend se despliega directo a
+     *         Cloud Run sin balanceador/CDN adicional delante (ver {@code deploy.yml}), así que el
+     *         único salto de confianza es la GFE de Google, que añade su propia observación de la
+     *         IP conectante al final de la cabecera. Los valores anteriores (incluido el primero,
+     *         que es el que enviaba el propio cliente) los puede fijar libremente quien hace la
+     *         petición — tomarlos permitía saltarse {@link RateLimitFilter} rotando la cabecera.
      */
     public static String resolve(HttpServletRequest request) {
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {
-            String first = xff.split(",")[0].trim();
-            if (!first.isBlank()) {
-                return first;
+            String[] hops = xff.split(",");
+            for (int i = hops.length - 1; i >= 0; i--) {
+                String hop = hops[i].trim();
+                if (!hop.isBlank()) {
+                    return hop;
+                }
             }
         }
 
