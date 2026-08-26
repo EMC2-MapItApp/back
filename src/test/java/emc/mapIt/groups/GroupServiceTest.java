@@ -352,6 +352,19 @@ class GroupServiceTest {
     }
 
     @Test
+    void acceptInvitation_porEmailNoReclamada_lanzaForbiddenSinNPE() {
+        GroupInvitation invitation = invitacionPendiente();
+        invitation.setInvitedUserId(null);
+        invitation.setInvitedEmail("pendiente@test.com");
+        when(groupInvitationRepository.findById("inv-1")).thenReturn(Optional.of(invitation));
+
+        assertThatThrownBy(() -> groupService.acceptInvitation(MEMBER_ID, "inv-1"))
+                .isInstanceOf(ApiException.class);
+
+        verify(groupMemberRepository, never()).save(any());
+    }
+
+    @Test
     void acceptInvitation_yaResuelta_lanzaConflict() {
         GroupInvitation invitation = invitacionPendiente();
         invitation.setStatus(GroupInvitationStatus.ACCEPTED);

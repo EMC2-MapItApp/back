@@ -667,7 +667,10 @@ public class GroupService {
     }
 
     private void requireInvitationOwner(GroupInvitation invitation, String userId) {
-        if (!invitation.getInvitedUserId().equals(userId)) {
+        // userId (requester autenticado) nunca es null; invitedUserId sí puede serlo si la
+        // invitación es por email y todavia no ha sido reclamada (ver GroupInvitation) — en ese
+        // caso nunca es "tuya" para nadie, por eso se compara desde userId y no al reves.
+        if (!userId.equals(invitation.getInvitedUserId())) {
             throw new ApiException("FORBIDDEN", "Esta invitación no es tuya", HttpStatus.FORBIDDEN);
         }
     }
