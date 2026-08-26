@@ -1,6 +1,7 @@
 package emc.mapIt.entity;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -14,6 +15,7 @@ import java.time.Instant;
  * cualquiera puede apuntarse sin invitación.
  */
 @Document(collection = "publication_invitations")
+@CompoundIndex(name = "idx_publicationId_invitedUserId_status", def = "{'publicationId': 1, 'invitedUserId': 1, 'status': 1}")
 public class PublicationInvitation {
 
     @Id

@@ -1,6 +1,7 @@
 package emc.mapIt.entity;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -18,6 +19,7 @@ import java.time.Instant;
  * </p>
  */
 @Document(collection = "publication_access_requests")
+@CompoundIndex(name = "idx_publicationId_requestedByUserId_status", def = "{'publicationId': 1, 'requestedByUserId': 1, 'status': 1}")
 public class PublicationAccessRequest {
 
     @Id

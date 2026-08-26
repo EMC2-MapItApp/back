@@ -1,6 +1,7 @@
 package emc.mapIt.groups;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -30,6 +31,8 @@ import java.time.Instant;
  * </p>
  */
 @Document(collection = "group_invitations")
+@CompoundIndex(name = "idx_invitedUserId_status", def = "{'invitedUserId': 1, 'status': 1}")
+@CompoundIndex(name = "idx_invitedEmail_status", def = "{'invitedEmail': 1, 'status': 1}")
 public class GroupInvitation {
 
     @Id
