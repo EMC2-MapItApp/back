@@ -9,6 +9,7 @@ import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserProfileDetails;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
+import emc.mapIt.repository.CapabilityDefinitionRepository;
 import emc.mapIt.repository.LocationTypeRepository;
 import emc.mapIt.repository.UserRepository;
 import org.slf4j.Logger;
@@ -56,21 +57,26 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final LocationTypeRepository locationTypeRepository;
+    private final CapabilityDefinitionRepository capabilityDefinitionRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
 
     /**
      * Constructor para inyección de dependencias.
      *
-     * @param userRepository         repositorio de usuarios
-     * @param locationTypeRepository repositorio de tipos de ubicación
-     * @param passwordEncoder        codificador de contraseñas BCrypt
-     * @param passwordPolicyService  validación de política de contraseñas
+     * @param userRepository                 repositorio de usuarios
+     * @param locationTypeRepository         repositorio de tipos de ubicación
+     * @param capabilityDefinitionRepository catálogo real de capacidades, para validar
+     *                                        {@link #unlockCapability(String, String)}
+     * @param passwordEncoder                codificador de contraseñas BCrypt
+     * @param passwordPolicyService          validación de política de contraseñas
      */
     public UserService(UserRepository userRepository, LocationTypeRepository locationTypeRepository,
+            CapabilityDefinitionRepository capabilityDefinitionRepository,
             PasswordEncoder passwordEncoder, PasswordPolicyService passwordPolicyService) {
         this.userRepository = userRepository;
         this.locationTypeRepository = locationTypeRepository;
+        this.capabilityDefinitionRepository = capabilityDefinitionRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
     }
@@ -361,6 +367,8 @@ public class UserService {
      * @throws ApiException con código BAD_REQUEST si id es nulo
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      * @throws ApiException con código BAD_REQUEST si capabilityId es nulo/vacío
+     * @throws ApiException con código NOT_FOUND si capabilityId no existe en el catálogo real
+     *                       ({@link CapabilityDefinitionRepository})
      */
     public void unlockCapability(String id, String capabilityId) {
         if (id == null) {
@@ -375,6 +383,10 @@ public class UserService {
         }
 
         String trimmed = capabilityId.trim();
+        if (!capabilityDefinitionRepository.existsById(trimmed)) {
+            throw new ApiException("NOT_FOUND", "Capability no encontrada", HttpStatus.NOT_FOUND);
+        }
+
         List<String> capabilities = user.getUnlockedCapabilities();
         if (capabilities == null) {
             capabilities = new ArrayList<>();

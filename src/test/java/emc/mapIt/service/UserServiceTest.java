@@ -5,6 +5,8 @@ import emc.mapIt.dto.MapItUserResponse;
 import emc.mapIt.dto.UserSearchResultResponse;
 import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserType;
+import emc.mapIt.exception.ApiException;
+import emc.mapIt.repository.CapabilityDefinitionRepository;
 import emc.mapIt.repository.LocationTypeRepository;
 import emc.mapIt.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +23,10 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -36,6 +41,7 @@ class UserServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private LocationTypeRepository locationTypeRepository;
+    @Mock private CapabilityDefinitionRepository capabilityDefinitionRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private PasswordPolicyService passwordPolicyService;
 
@@ -44,7 +50,8 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, locationTypeRepository, passwordEncoder, passwordPolicyService);
+        userService = new UserService(userRepository, locationTypeRepository, capabilityDefinitionRepository,
+                passwordEncoder, passwordPolicyService);
 
         target = new MapItUser();
         target.setId("user-1");
@@ -176,5 +183,34 @@ class UserServiceTest {
         List<UserSearchResultResponse> results = userService.searchUsers("bea", "user-1");
 
         assertThat(results.get(0).email()).isEqualTo("***@test.com");
+    }
+
+    // ── unlockCapability ────────────────────────────────────────
+
+    @Test
+    void unlockCapability_conIdDelCatalogoReal_laDesbloquea() {
+        User user = new User();
+        user.setId("user-1");
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(capabilityDefinitionRepository.existsById("cap-mapas-ilimitados")).thenReturn(true);
+
+        userService.unlockCapability("user-1", "cap-mapas-ilimitados");
+
+        assertThat(user.getUnlockedCapabilities()).containsExactly("cap-mapas-ilimitados");
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void unlockCapability_conIdInventado_lanzaNotFoundYNoGuarda() {
+        User user = new User();
+        user.setId("user-1");
+        when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
+        when(capabilityDefinitionRepository.existsById("no-existe")).thenReturn(false);
+
+        assertThatThrownBy(() -> userService.unlockCapability("user-1", "no-existe"))
+                .isInstanceOf(ApiException.class);
+
+        verify(userRepository, never()).save(any());
+        assertThat(user.getUnlockedCapabilities()).isEmpty();
     }
 }
