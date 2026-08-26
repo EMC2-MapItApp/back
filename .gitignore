@@ -33,7 +33,7 @@ build/
 .vscode/
 
 ### Claude Code (config local con rutas de máquina) ###
-.claude/
+#.claude/
 
 ### Environment ###
 .env
@@ -50,7 +50,7 @@ build/
 Thumbs.db
 
 ### Notas de trabajo internas, no forman parte del repo público ###
-/docs/FALLOS.md
-/docs/IDEAS.md
-/BITACORA.md
-/scripts/
+# /docs/FALLOS.md
+# /docs/IDEAS.md
+# /BITACORA.md
+# /scripts/
