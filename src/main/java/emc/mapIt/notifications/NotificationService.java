@@ -232,8 +232,15 @@ public class NotificationService {
         log.info("Suscripción push registrada userId={} endpoint={}", userId, request.endpoint());
     }
 
-    public void unregisterSubscription(String endpoint) {
-        pushSubscriptionRepository.deleteByEndpoint(endpoint);
+    /**
+     * Da de baja la suscripción push, solo si pertenece a {@code userId}. Si el endpoint no existe
+     * o pertenece a otro usuario, no hace nada — mismo criterio best-effort que el resto de bajas
+     * de push, y evita filtrar por error si un endpoint ajeno existe o no.
+     */
+    public void unregisterSubscription(String userId, String endpoint) {
+        pushSubscriptionRepository.findByEndpoint(endpoint)
+                .filter(subscription -> userId.equals(subscription.getUserId()))
+                .ifPresent(subscription -> pushSubscriptionRepository.deleteByEndpoint(endpoint));
     }
 
     // ── Preferencias de email por tipo ───────────────────────────────────────────

@@ -137,7 +137,7 @@ class NotificationControllerTest {
                         .content(body))
                 .andExpect(status().isNoContent());
 
-        verify(notificationService).unregisterSubscription("https://push.example.com/abc");
+        verify(notificationService).unregisterSubscription(USER_ID, "https://push.example.com/abc");
     }
 
     @Test
