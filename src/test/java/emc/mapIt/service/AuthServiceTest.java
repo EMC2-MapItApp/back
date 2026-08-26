@@ -116,6 +116,17 @@ class AuthServiceTest {
     }
 
     @Test
+    void register_conUserTypeAdmin_lanzaApiExceptionYNoCreaUsuario() {
+        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "pass1234", UserType.ADMIN);
+
+        assertThatThrownBy(() -> authService.register(request))
+                .isInstanceOf(ApiException.class);
+
+        verify(userService, never()).create(any());
+        verify(emailVerificationService, never()).issueAndSend(any());
+    }
+
+    @Test
     void register_conUserTypeNull_lanzaApiException() {
         AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "pass1234", null);
         assertThatThrownBy(() -> authService.register(request))

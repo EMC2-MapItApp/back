@@ -73,6 +73,9 @@ public class AuthService {
                 || isBlank(request.password()) || request.userType() == null) {
             throw new ApiException("BAD_REQUEST", "Datos de registro invalidos", HttpStatus.BAD_REQUEST);
         }
+        if (request.userType() == UserType.ADMIN) {
+            throw new ApiException("BAD_REQUEST", "No se admiten registros con rol ADMIN", HttpStatus.BAD_REQUEST);
+        }
 
         // Si el cliente no proporciona nick, se genera uno unico a partir del nombre.
         // El usuario puede cambiarlo despues desde su perfil.
