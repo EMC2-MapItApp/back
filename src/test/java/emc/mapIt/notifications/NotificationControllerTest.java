@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,12 +36,12 @@ class NotificationControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
 
-    @MockBean NotificationService notificationService;
-    @MockBean NotificationMapper notificationMapper;
-    @MockBean emc.mapIt.service.AuthService authService;
+    @MockitoBean NotificationService notificationService;
+    @MockitoBean NotificationMapper notificationMapper;
+    @MockitoBean emc.mapIt.service.AuthService authService;
     // JwtAuthFilter (Filter bean) se escanea igualmente pese a excluir SecurityAutoConfiguration
     // — mismo motivo por el que AuthControllerTest también lo mockea.
-    @MockBean emc.mapIt.service.JwtService jwtService;
+    @MockitoBean emc.mapIt.service.JwtService jwtService;
 
     private static final String USER_ID = "user-1";
 

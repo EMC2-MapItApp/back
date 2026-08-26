@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.12</version>
+		<version>3.5.16</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>emc.mapIt</groupId>
@@ -30,13 +30,6 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
-		<!-- Fijado al último patch publicado de la línea 6.3.x (Maven Central no tiene nada
-		     más reciente que 6.3.10 en esta línea; 6.3.15, citado en auditorías previas, no
-		     existe como artefacto real — ver aviso en el informe de auditoría). Mientras se
-		     planifica el salto de línea de Spring Boot (3.3.x ya está en EOL de soporte
-		     comunitario), esto da la versión más nueva disponible dentro de 6.3.x. Quitar este
-		     override en cuanto se suba a Boot 3.4.x/3.5.x. -->
-		<spring-security.version>6.3.10</spring-security.version>
 	</properties>
 
 	<profiles>
