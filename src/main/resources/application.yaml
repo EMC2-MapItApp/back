@@ -6,6 +6,13 @@
 spring:
   application:
     name: mapIt
+  data:
+    mongodb:
+      # Crea/verifica en cada arranque los índices declarados con @Indexed/@CompoundIndex
+      # (ver User.email/nick, Publication.authorId/active+startDate). Idempotente — no-op si
+      # el índice ya existe — así que es seguro dejarlo activo de forma permanente, no solo
+      # para una migración puntual.
+      auto-index-creation: true
   jackson:
     serialization:
       write-dates-as-timestamps: false

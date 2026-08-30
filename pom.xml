@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.12</version>
+		<version>3.5.16</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>emc.mapIt</groupId>
@@ -123,6 +123,16 @@
 			<version>1.9.0</version>
 		</dependency>
 
+		<!-- Rate limiting en memoria (RateLimitFilter) para /auth/login y /auth/forgot-password.
+		     Solo bucket4j-core: sin backend distribuido (Redis/Hazelcast) porque Cloud Run corre
+		     hoy con una sola instancia — si se escala a varias réplicas, los contadores dejan de
+		     ser exactos entre instancias y hay que revisar esto. -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j-core</artifactId>
+			<version>8.10.1</version>
+		</dependency>
+
 		<!-- Protocolo Web Push (VAPID) para notificaciones nativas del SO (notifications/) -->
 		<dependency>
 			<groupId>nl.martijndwars</groupId>
@@ -142,6 +152,9 @@
 			<artifactId>bcprov-jdk18on</artifactId>
 			<version>1.78.1</version>
 		</dependency>
+		<!-- Requerida en compile-time por nl.martijndwars:web-push: PushService.send() referencia
+		     org.jose4j.lang.JoseException en su firma, aunque este repo no la use directamente
+		     (confirmado con `mvn clean compile` fallando sin esta dependencia explícita). -->
 		<dependency>
 			<groupId>org.bitbucket.b_c</groupId>
 			<artifactId>jose4j</artifactId>

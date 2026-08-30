@@ -120,8 +120,8 @@ public class NotificationController {
     @DeleteMapping("/push/subscriptions")
     public ResponseEntity<Void> unregisterPushSubscription(@Valid @RequestBody PushUnsubscribeRequest request,
             @RequestHeader(name = "Authorization", required = false) String authorization) {
-        authService.requireUserId(authorization);
-        notificationService.unregisterSubscription(request.endpoint());
+        String userId = authService.requireUserId(authorization);
+        notificationService.unregisterSubscription(userId, request.endpoint());
         return ResponseEntity.noContent().build();
     }
 

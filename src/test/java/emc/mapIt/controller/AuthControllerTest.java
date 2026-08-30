@@ -20,7 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,9 +42,9 @@ class AuthControllerTest {
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
 
-    @MockBean AuthService authService;
-    @MockBean UserService userService;
-    @MockBean JwtService jwtService;
+    @MockitoBean AuthService authService;
+    @MockitoBean UserService userService;
+    @MockitoBean JwtService jwtService;
 
     private static final MapItUserResponse USER_RESPONSE = new MapItUserResponse(
             "id-1", "Ana", "ana", "ana@test.com", UserType.PARTICULAR,

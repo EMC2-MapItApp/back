@@ -1,5 +1,6 @@
 package emc.mapIt.geo;
 
+import emc.mapIt.config.ClientIpResolver;
 import emc.mapIt.exception.ApiException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -98,21 +99,7 @@ public class GeoIpService {
         if (isSimulated(simIp)) {
             return simIp.trim();
         }
-
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            String first = xff.split(",")[0].trim();
-            if (!first.isBlank())
-                return first;
-        }
-
-        String xri = request.getHeader("X-Real-IP");
-        if (xri != null && !xri.isBlank()) {
-            return xri.trim();
-        }
-
-        String remote = request.getRemoteAddr();
-        return (remote == null || remote.isBlank()) ? "127.0.0.1" : remote.trim();
+        return ClientIpResolver.resolve(request);
     }
 
     /**

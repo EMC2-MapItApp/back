@@ -93,24 +93,27 @@ public class UserController {
     }
 
     /**
-     * Recupera el perfil completo de un usuario por su identificador.
-     * <p>
-     * Devuelve toda la información pública del usuario incluyendo capacidades,
-     * nivel, XP y configuraciones específicas según el tipo de usuario.
-     * </p>
+     * Recupera el perfil de un usuario por su identificador. Ruta pública (ver
+     * {@code SecurityConfig}): accesible sin sesión, pero los campos de contacto/perfil privados
+     * ({@code email}, {@code phone}, {@code birthDate}, {@code city}, {@code province}) solo se
+     * incluyen si quien consulta es el propio usuario o un ADMIN — para cualquier otro viewer
+     * (incluido anónimo) llegan a {@code null}. Ver {@link UserService#toPublicResponse}.
      *
-     * @param id identificador único del usuario
-     * @return {@link MapItUserResponse} con información completa del usuario
+     * @param id            identificador único del usuario
+     * @param authorization header de autorización con token JWT, opcional
+     * @return {@link MapItUserResponse} con información del usuario, enmascarada según el viewer
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      *
      * @see MapItUserResponse
      * @see UserService#getByIdOrThrow(UUID)
      */
     @GetMapping("/{id}")
-    public MapItUserResponse getById(@PathVariable String id) {
+    public MapItUserResponse getById(@PathVariable String id,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.debug("Lectura de usuario id={}", id);
         MapItUser user = userService.getByIdOrThrow(id);
-        return userService.toResponse(user);
+        String viewerId = authService.resolveUserIdOrNull(authorization);
+        return userService.toPublicResponse(user, viewerId);
     }
 
     /**
@@ -265,26 +268,22 @@ public class UserController {
      * por publicaciones activas.
      * </p>
      *
-     * @param id         identificador del usuario
-     * @param activeOnly si true, solo devuelve publicaciones activas (por defecto:
-     *                   true)
+     * @param id            identificador del usuario
+     * @param activeOnly    si true, solo devuelve publicaciones activas (por defecto:
+     *                      true)
+     * @param authorization cabecera Authorization con JWT, opcional — ruta pública; el viewer
+     *                      resuelto determina si las publicaciones {@code PRIVATE} del usuario se
+     *                      devuelven con contenido enmascarado o excluidas (anónimo)
      * @return lista de publicaciones del usuario
      * @throws ApiException con código NOT_FOUND si el usuario no existe
-     *
-     * @return lista de publicaciones serializables
      */
     @GetMapping("/{id}/publications")
     public List<PublicationResponse> getUserPublications(@PathVariable String id,
-            @RequestParam(defaultValue = "true") boolean activeOnly) {
+            @RequestParam(defaultValue = "true") boolean activeOnly,
+            @RequestHeader(name = "Authorization", required = false) String authorization) {
         log.debug("Lectura de publicaciones usuario id={}, activeOnly={}", id, activeOnly);
         userService.getByIdOrThrow(id);
-        // Sin cabecera Authorization en esta ruta: se asume que "id" es siempre el propio usuario
-        // consultando sus publicaciones (el frontend solo la usa para "mis publicaciones"), así
-        // que se pasa como viewerId — un autor siempre es miembro/organizador de cualquier grupo
-        // que use en sus publicaciones privadas, por lo que nunca se le enmascara su propio aforo.
-        // Si esta ruta llegara a reutilizarse para el perfil público de un tercero, hay que
-        // resolver aquí el viewer real de la sesión en vez de asumir que es "id".
-        return publicationService.findByAuthor(id, activeOnly, id);
+        return publicationService.findByAuthor(id, activeOnly, authService.resolveUserIdOrNull(authorization));
     }
 
     /**

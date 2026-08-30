@@ -238,10 +238,32 @@ class NotificationServiceTest {
     }
 
     @Test
-    void unregisterSubscription_borraPorEndpoint() {
-        notificationService.unregisterSubscription("https://push.example.com/x");
+    void unregisterSubscription_delPropioDueño_borraPorEndpoint() {
+        PushSubscription owned = subscription("https://push.example.com/x");
+        when(pushSubscriptionRepository.findByEndpoint("https://push.example.com/x")).thenReturn(Optional.of(owned));
+
+        notificationService.unregisterSubscription(INVITED_ID, "https://push.example.com/x");
 
         verify(pushSubscriptionRepository).deleteByEndpoint("https://push.example.com/x");
+    }
+
+    @Test
+    void unregisterSubscription_deOtroUsuario_noBorraNada() {
+        PushSubscription ajena = subscription("https://push.example.com/x");
+        when(pushSubscriptionRepository.findByEndpoint("https://push.example.com/x")).thenReturn(Optional.of(ajena));
+
+        notificationService.unregisterSubscription(ORGANIZER_ID, "https://push.example.com/x");
+
+        verify(pushSubscriptionRepository, never()).deleteByEndpoint(anyString());
+    }
+
+    @Test
+    void unregisterSubscription_endpointInexistente_noBorraNada() {
+        when(pushSubscriptionRepository.findByEndpoint("https://push.example.com/x")).thenReturn(Optional.empty());
+
+        notificationService.unregisterSubscription(INVITED_ID, "https://push.example.com/x");
+
+        verify(pushSubscriptionRepository, never()).deleteByEndpoint(anyString());
     }
 
     // ── Preferencias de email por tipo ───────────────────────────

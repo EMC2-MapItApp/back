@@ -64,7 +64,7 @@ public class PublicationController {
 
     /**
      * Recupera una publicación por su identificador. Ruta pública (ver {@code SecurityConfig}):
-     * accesible sin sesión, pero si hay una válida se usa para calcular pertenencia a grupo en
+     * accesible sin sesión, pero si hay una válida se usa para calcular el acceso del viewer a
      * publicaciones privadas.
      *
      * @param id            identificador de la publicación
@@ -127,10 +127,11 @@ public class PublicationController {
 
     /**
      * Cambia la visibilidad de una publicación existente. Solo el autor o un ADMIN pueden
-     * hacerlo; bloqueado si al pasar a privada hay inscritos ajenos al grupo destino.
+     * hacerlo; bloqueado si al pasar a privada hay inscritos sin acceso (ni autor, ni ADMIN, ni
+     * invitación no rechazada) a la publicación resultante.
      *
      * @param id            identificador de la publicación
-     * @param request       visibilidad destino y, si aplica, grupo
+     * @param request       visibilidad destino
      * @param authorization cabecera Authorization con JWT
      * @return publicación actualizada
      */
@@ -222,7 +223,7 @@ public class PublicationController {
     /**
      * Lista los usuarios inscritos en una publicación. Requiere sesión (ver
      * {@code SecurityConfig}: no está en la lista de lecturas públicas); en publicaciones
-     * privadas solo pueden verla los miembros del grupo.
+     * privadas solo puede verla quien tiene acceso (autor, ADMIN o invitado no rechazado).
      *
      * @param id            identificador de la publicación
      * @param authorization cabecera Authorization con JWT

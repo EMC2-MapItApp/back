@@ -1,7 +1,9 @@
 package emc.mapIt.mapper;
 
 import emc.mapIt.dto.CreatePublicationRequest;
+import emc.mapIt.dto.PublicationResponse;
 import emc.mapIt.entity.Publication;
+import emc.mapIt.entity.PublicationVisibility;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +33,7 @@ class PublicationMapperTest {
         CreatePublicationRequest request = new CreatePublicationRequest(
                 null, "loc-1", "Título", null,
                 LocalDateTime.now(), null,
-                ORIGIN_LAT, ORIGIN_LNG, 0, Map.of(), null, null, null);
+                ORIGIN_LAT, ORIGIN_LNG, 0, Map.of(), null, null);
 
         Publication publication = mapper.toEntity(request, null, null);
 
@@ -53,12 +55,67 @@ class PublicationMapperTest {
         assertThat(distanceKm).isLessThanOrEqualTo(5.0);
     }
 
+    // ── toResponse (enmascarado de contenido privado) ────────────
+
+    private Publication privatePublication() {
+        Publication publication = new Publication();
+        publication.setId("pub-1");
+        publication.setAuthorId("author-1");
+        publication.setVisibility(PublicationVisibility.PRIVATE);
+        publication.setTitle("Título privado");
+        publication.setDescription("Descripción privada");
+        publication.setLat(ORIGIN_LAT);
+        publication.setLng(ORIGIN_LNG);
+        publication.setMetadata(Map.of("slots", 10));
+        return publication;
+    }
+
+    @Test
+    void toResponse_privadaSinAcceso_ocultaContenidoPeroConservaElPin() {
+        PublicationResponse response = mapper.toResponse(privatePublication(), 3L, false, false);
+
+        assertThat(response.title()).isNull();
+        assertThat(response.description()).isNull();
+        assertThat(response.metadata()).isNull();
+        assertThat(response.occupiedSlots()).isNull();
+        assertThat(response.hasAccess()).isFalse();
+        assertThat(response.accessRequestPending()).isFalse();
+        // El pin debe poder dibujarse en el mapa aunque el contenido esté oculto.
+        assertThat(response.lat()).isEqualByComparingTo(ORIGIN_LAT);
+        assertThat(response.lng()).isEqualByComparingTo(ORIGIN_LNG);
+    }
+
+    @Test
+    void toResponse_privadaConAcceso_devuelveContenidoCompleto() {
+        PublicationResponse response = mapper.toResponse(privatePublication(), 3L, true, null);
+
+        assertThat(response.title()).isEqualTo("Título privado");
+        assertThat(response.description()).isEqualTo("Descripción privada");
+        assertThat(response.metadata()).containsEntry("slots", 10);
+        assertThat(response.occupiedSlots()).isEqualTo(3L);
+        assertThat(response.hasAccess()).isTrue();
+    }
+
+    @Test
+    void toResponse_publica_hasAccessSiempreTrueYSinAccessRequestPending() {
+        Publication publication = new Publication();
+        publication.setId("pub-2");
+        publication.setVisibility(PublicationVisibility.PUBLIC);
+        publication.setTitle("Evento público");
+
+        PublicationResponse response = mapper.toResponse(publication, 0L, true, true);
+
+        assertThat(response.title()).isEqualTo("Evento público");
+        assertThat(response.hasAccess()).isTrue();
+        assertThat(response.accessRequestPending()).isNull();
+    }
+
     private CreatePublicationRequest request(boolean exactLocation) {
         return new CreatePublicationRequest(
                 null, "loc-1", "Título", null,
                 LocalDateTime.now(), null,
                 ORIGIN_LAT, ORIGIN_LNG, 0,
-                Map.of("exactLocation", exactLocation), null, null, null);
+                Map.of("exactLocation", exactLocation), null, null);
     }
 
     private double haversineKm(double lat1, double lng1, double lat2, double lng2) {

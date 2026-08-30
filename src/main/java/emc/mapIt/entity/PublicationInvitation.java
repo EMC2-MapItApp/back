@@ -1,18 +1,21 @@
 package emc.mapIt.entity;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
 /**
  * Invitación individual de un usuario a una {@link Publication}, independiente de la
- * visibilidad de esta. En una publicación {@code PRIVATE_GROUP} es una vía de acceso para
- * apuntarse alternativa a la pertenencia al grupo — ninguna de las dos implica la otra (ver
- * {@code PublicationService#enroll}). En una publicación {@code PUBLIC} es solo un aviso, ya que
+ * visibilidad de esta. En una publicación {@code PRIVATE} es el único mecanismo de acceso para
+ * apuntarse (ver {@code PublicationService#enroll}) — invitar a los integrantes de un grupo es
+ * solo un atajo de cliente para crear varias invitaciones individuales de una vez, sin ningún
+ * vínculo posterior con el grupo. En una publicación {@code PUBLIC} es solo un aviso, ya que
  * cualquiera puede apuntarse sin invitación.
  */
 @Document(collection = "publication_invitations")
+@CompoundIndex(name = "idx_publicationId_invitedUserId_status", def = "{'publicationId': 1, 'invitedUserId': 1, 'status': 1}")
 public class PublicationInvitation {
 
     @Id

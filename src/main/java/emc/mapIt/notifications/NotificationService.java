@@ -113,32 +113,6 @@ public class NotificationService {
                 "/groups");
     }
 
-    /** Alguien ha solicitado unirse a un grupo (iniciado desde una publicación privada). */
-    public void notifyGroupJoinRequest(MapItUser organizer, String groupName, MapItUser requester) {
-        if (isEmailEnabled(organizer.getId(), NotificationType.GROUP_JOIN_REQUEST)) {
-            notificationSender.sendGroupJoinRequestEmail(
-                    organizer.getEmail(), organizer.getName(), groupName, requester.getName());
-        }
-
-        dispatch(organizer.getId(), NotificationType.GROUP_JOIN_REQUEST,
-                "Solicitud para " + groupName,
-                requester.getName() + " quiere unirse a \"" + groupName + "\"",
-                "/groups");
-    }
-
-    /** Una solicitud de acceso a grupo ha sido aceptada o rechazada. */
-    public void notifyGroupJoinRequestResolved(MapItUser requester, String groupName, boolean accepted) {
-        if (isEmailEnabled(requester.getId(), NotificationType.GROUP_JOIN_REQUEST_RESOLVED)) {
-            notificationSender.sendGroupJoinRequestResolvedEmail(
-                    requester.getEmail(), requester.getName(), groupName, accepted);
-        }
-
-        dispatch(requester.getId(), NotificationType.GROUP_JOIN_REQUEST_RESOLVED,
-                "Solicitud " + (accepted ? "aceptada" : "rechazada"),
-                "Tu solicitud para unirte a \"" + groupName + "\" ha sido " + (accepted ? "aceptada" : "rechazada"),
-                "/groups");
-    }
-
     /** Invitación individual a un evento (publicación), independiente de su visibilidad. */
     public void notifyPublicationInvitation(MapItUser invited, String publicationTitle, MapItUser invitedBy) {
         if (isEmailEnabled(invited.getId(), NotificationType.PUBLICATION_INVITATION)) {
@@ -258,8 +232,15 @@ public class NotificationService {
         log.info("Suscripción push registrada userId={} endpoint={}", userId, request.endpoint());
     }
 
-    public void unregisterSubscription(String endpoint) {
-        pushSubscriptionRepository.deleteByEndpoint(endpoint);
+    /**
+     * Da de baja la suscripción push, solo si pertenece a {@code userId}. Si el endpoint no existe
+     * o pertenece a otro usuario, no hace nada — mismo criterio best-effort que el resto de bajas
+     * de push, y evita filtrar por error si un endpoint ajeno existe o no.
+     */
+    public void unregisterSubscription(String userId, String endpoint) {
+        pushSubscriptionRepository.findByEndpoint(endpoint)
+                .filter(subscription -> userId.equals(subscription.getUserId()))
+                .ifPresent(subscription -> pushSubscriptionRepository.deleteByEndpoint(endpoint));
     }
 
     // ── Preferencias de email por tipo ───────────────────────────────────────────

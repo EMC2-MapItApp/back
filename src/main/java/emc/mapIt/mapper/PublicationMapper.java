@@ -7,7 +7,6 @@ import emc.mapIt.entity.Publication;
 import emc.mapIt.entity.PublicationType;
 import emc.mapIt.entity.PublicationVisibility;
 import emc.mapIt.entity.User;
-import emc.mapIt.groups.GroupMembershipSummary;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -55,7 +54,6 @@ public class PublicationMapper {
         publication.setMetadata(request.metadata() != null ? new LinkedHashMap<>(request.metadata()) : Map.of());
         publication.setActive(true);
         publication.setVisibility(request.visibility() != null ? request.visibility() : PublicationVisibility.PUBLIC);
-        publication.setGroupId(publication.getVisibility() == PublicationVisibility.PRIVATE_GROUP ? request.groupId() : null);
 
         if (request.lat() != null && request.lng() != null && !isExactLocation(publication.getMetadata())) {
             BigDecimal[] approximate = randomPointWithinRadius(request.lat(), request.lng(), APPROXIMATE_RADIUS_KM);
@@ -100,22 +98,26 @@ public class PublicationMapper {
     /**
      * Convierte una entidad persistida a una vista serializable.
      *
-     * @param publication entidad persistida
-     * @param occupiedSlots plazas ocupadas actuales, ya calculadas
-     * @param groupInfo     resumen de pertenencia al grupo del espectador, {@code null} si la
-     *                      publicación es {@code PUBLIC} (o {@code visibility} es {@code null},
-     *                      documento legacy anterior a este campo)
-     * @return DTO de respuesta, con {@code occupiedSlots} enmascarado a {@code null} si el
-     * espectador no es miembro del grupo de una publicación privada
+     * @param publication          entidad persistida
+     * @param occupiedSlots        plazas ocupadas actuales, ya calculadas
+     * @param hasAccess            si el espectador puede ver el contenido completo — siempre
+     *                             {@code true} en publicaciones {@code PUBLIC}; en {@code PRIVATE}
+     *                             lo calcula el llamador (autor/ADMIN/invitación no-{@code DECLINED})
+     * @param accessRequestPending si el espectador tiene una solicitud de acceso pendiente,
+     *                             {@code null} si la publicación es {@code PUBLIC}
+     * @return DTO de respuesta; si {@code visibility == PRIVATE && !hasAccess}, {@code title},
+     * {@code description}, {@code metadata} y {@code occupiedSlots} llegan a {@code null} — es el
+     * enmascarado que evita filtrar el contenido de una publicación privada a quien no tiene acceso
      */
-    public PublicationResponse toResponse(Publication publication, long occupiedSlots, GroupMembershipSummary groupInfo) {
+    public PublicationResponse toResponse(Publication publication, long occupiedSlots, boolean hasAccess,
+            Boolean accessRequestPending) {
         if (publication == null) {
             return null;
         }
 
         PublicationVisibility visibility = publication.getVisibility() != null
                 ? publication.getVisibility() : PublicationVisibility.PUBLIC;
-        boolean maskCapacity = groupInfo != null && !groupInfo.isMember();
+        boolean maskContent = visibility == PublicationVisibility.PRIVATE && !hasAccess;
 
         return new PublicationResponse(
                 publication.getId(),
@@ -123,22 +125,19 @@ public class PublicationMapper {
                 publication.getPublicationType(),
                 publication.getPlaceId(),
                 publication.getLocationTypeId(),
-                publication.getTitle(),
-                publication.getDescription(),
+                maskContent ? null : publication.getTitle(),
+                maskContent ? null : publication.getDescription(),
                 publication.getStartDate(),
                 publication.getEndDate(),
                 publication.getLat(),
                 publication.getLng(),
                 publication.getRequiredLevel(),
-                publication.getMetadata(),
-                maskCapacity ? null : occupiedSlots,
+                maskContent ? null : publication.getMetadata(),
+                maskContent ? null : occupiedSlots,
                 publication.getActive(),
                 visibility,
-                publication.getGroupId(),
-                groupInfo != null ? groupInfo.groupName() : null,
-                groupInfo != null ? groupInfo.memberCount() : null,
-                groupInfo != null ? groupInfo.isMember() : null,
-                groupInfo != null ? groupInfo.hasPendingJoinRequest() : null);
+                hasAccess,
+                visibility == PublicationVisibility.PUBLIC ? null : accessRequestPending);
     }
 
     private ZonedDateTime toZonedDateTime(java.time.LocalDateTime value) {

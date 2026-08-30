@@ -16,7 +16,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Servicio de aplicación del dominio Grupos: alta/edición, invitaciones, aceptación/rechazo,
@@ -39,13 +38,11 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupInvitationRepository groupInvitationRepository;
-    private final GroupJoinRequestRepository groupJoinRequestRepository;
     private final MainCategoryRepository mainCategoryRepository;
     private final UserService userService;
     private final NotificationService notificationService;
     private final GroupMapper groupMapper;
     private final GroupInvitationMapper groupInvitationMapper;
-    private final GroupJoinRequestMapper groupJoinRequestMapper;
 
     /**
      * Constructor para inyección de dependencias.
@@ -54,23 +51,19 @@ public class GroupService {
             GroupRepository groupRepository,
             GroupMemberRepository groupMemberRepository,
             GroupInvitationRepository groupInvitationRepository,
-            GroupJoinRequestRepository groupJoinRequestRepository,
             MainCategoryRepository mainCategoryRepository,
             UserService userService,
             NotificationService notificationService,
             GroupMapper groupMapper,
-            GroupInvitationMapper groupInvitationMapper,
-            GroupJoinRequestMapper groupJoinRequestMapper) {
+            GroupInvitationMapper groupInvitationMapper) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.groupInvitationRepository = groupInvitationRepository;
-        this.groupJoinRequestRepository = groupJoinRequestRepository;
         this.mainCategoryRepository = mainCategoryRepository;
         this.userService = userService;
         this.notificationService = notificationService;
         this.groupMapper = groupMapper;
         this.groupInvitationMapper = groupInvitationMapper;
-        this.groupJoinRequestMapper = groupJoinRequestMapper;
     }
 
     // ── Grupos ───────────────────────────────────────────────────────────────
@@ -338,217 +331,6 @@ public class GroupService {
         groupInvitationRepository.save(invitation);
 
         log.info("Invitación rechazada invitationId={} userId={}", invitationId, requesterId);
-    }
-
-    // ── Solicitudes de acceso ────────────────────────────────────────────────
-    // Iniciadas por el usuario (a diferencia de las invitaciones, iniciadas por el organizador).
-    // Nacen siempre desde una publicación privada a la que un no-miembro intenta apuntarse —
-    // ver PublicationService#requestAccess, único punto que llama a requestToJoin.
-
-    /**
-     * true si {@code userId} es miembro (o organizador) de {@code groupId}.
-     */
-    @Transactional(readOnly = true)
-    public boolean isMember(String groupId, String userId) {
-        if (groupId == null || userId == null) return false;
-        return groupMemberRepository.existsByGroupIdAndUserId(groupId, userId);
-    }
-
-    /**
-     * true si {@code userId} es el organizador de {@code groupId}.
-     */
-    @Transactional(readOnly = true)
-    public boolean isOrganizer(String groupId, String userId) {
-        if (groupId == null || userId == null) return false;
-        return groupRepository.findById(groupId)
-                .map(group -> group.getOrganizerId().equals(userId))
-                .orElse(false);
-    }
-
-    /**
-     * Ids de todos los miembros (incluido el organizador) de un grupo.
-     */
-    @Transactional(readOnly = true)
-    public Set<String> getMemberUserIds(String groupId) {
-        return groupMemberRepository.findByGroupId(groupId).stream()
-                .map(GroupMember::getUserId)
-                .collect(Collectors.toSet());
-    }
-
-    /**
-     * true si {@code userId} tiene una solicitud de acceso pendiente a {@code groupId}.
-     */
-    @Transactional(readOnly = true)
-    public boolean hasPendingJoinRequest(String groupId, String userId) {
-        if (groupId == null || userId == null) return false;
-        return groupJoinRequestRepository.existsByGroupIdAndRequestedByUserIdAndStatus(
-                groupId, userId, GroupJoinRequestStatus.PENDING);
-    }
-
-    /**
-     * Resumen de la relación de un usuario con un grupo, para que otros módulos (publicaciones)
-     * sepan qué mostrar sin acceder a los repositorios de este módulo. No lanza si el grupo no
-     * existe — un grupo borrado no debe romper la lectura de publicaciones de otros usuarios que
-     * todavía lo referencian (borrar un grupo no hace cascade sobre esas publicaciones hoy).
-     *
-     * @param groupId id del grupo
-     * @param userId  id del usuario cuya relación con el grupo se resume
-     * @return resumen de pertenencia, vacío (todo a false/0) si el grupo no existe
-     */
-    @Transactional(readOnly = true)
-    public GroupMembershipSummary getMembershipSummary(String groupId, String userId) {
-        if (groupId == null) {
-            return new GroupMembershipSummary(null, null, 0, false, false, false);
-        }
-        return groupRepository.findById(groupId)
-                .map(group -> {
-                    int memberCount = groupMemberRepository.findByGroupId(groupId).size();
-                    boolean member = isMember(groupId, userId);
-                    boolean organizer = group.getOrganizerId().equals(userId);
-                    boolean pending = !member && hasPendingJoinRequest(groupId, userId);
-                    return new GroupMembershipSummary(groupId, group.getName(), memberCount, member, organizer, pending);
-                })
-                .orElseGet(() -> {
-                    log.warn("getMembershipSummary: grupo no encontrado groupId={}", groupId);
-                    return new GroupMembershipSummary(groupId, null, 0, false, false, false);
-                });
-    }
-
-    /**
-     * Solicita unirse a un grupo. Iniciada por el propio usuario, siempre desde el contexto de una
-     * publicación privada de ese grupo (ver {@code publicationId}).
-     *
-     * @param requesterId   id del usuario autenticado que solicita
-     * @param groupId       id del grupo
-     * @param publicationId publicación privada que motivó la solicitud (trazabilidad, nullable)
-     * @return solicitud creada
-     */
-    public GroupJoinRequestResponse requestToJoin(String requesterId, String groupId, String publicationId) {
-        requireUserId(requesterId);
-        Group group = getGroupOrThrow(groupId);
-
-        if (groupMemberRepository.existsByGroupIdAndUserId(groupId, requesterId)) {
-            throw new ApiException("ALREADY_MEMBER", "Ya perteneces a este grupo", HttpStatus.CONFLICT);
-        }
-        if (groupJoinRequestRepository.existsByGroupIdAndRequestedByUserIdAndStatus(
-                groupId, requesterId, GroupJoinRequestStatus.PENDING)) {
-            throw new ApiException("ALREADY_REQUESTED", "Ya has solicitado unirte a este grupo", HttpStatus.CONFLICT);
-        }
-
-        GroupJoinRequest request = new GroupJoinRequest();
-        request.setGroupId(groupId);
-        request.setRequestedByUserId(requesterId);
-        request.setPublicationId(publicationId);
-        request.setStatus(GroupJoinRequestStatus.PENDING);
-        request.setCreatedAt(Instant.now());
-        GroupJoinRequest saved = groupJoinRequestRepository.save(request);
-
-        MapItUser requester = userService.getByIdOrThrow(requesterId);
-        MapItUser organizer = userService.getByIdOrThrow(group.getOrganizerId());
-        notificationService.notifyGroupJoinRequest(organizer, group.getName(), requester);
-
-        log.info("Solicitud de acceso creada requestId={} groupId={} requestedByUserId={}",
-                saved.getId(), groupId, requesterId);
-        return buildJoinRequestResponse(saved, group);
-    }
-
-    /**
-     * Solicitudes de acceso pendientes de un grupo. Solo el organizador puede verlas.
-     *
-     * @param requesterId id del usuario autenticado
-     * @param groupId     id del grupo
-     * @return solicitudes en estado PENDING
-     */
-    @Transactional(readOnly = true)
-    public List<GroupJoinRequestResponse> getGroupPendingJoinRequests(String requesterId, String groupId) {
-        requireUserId(requesterId);
-        Group group = getGroupOrThrow(groupId);
-        requireOrganizer(group, requesterId);
-        return groupJoinRequestRepository.findByGroupIdAndStatus(groupId, GroupJoinRequestStatus.PENDING)
-                .stream()
-                .map(request -> buildJoinRequestResponse(request, group))
-                .toList();
-    }
-
-    /**
-     * Acepta una solicitud de acceso pendiente: añade al solicitante como
-     * {@link GroupRole#MEMBER}. No inscribe automáticamente en ninguna publicación — el aforo
-     * sigue rigiéndose únicamente por el orden real de apuntamiento (ver {@code enroll}).
-     * Idempotente si, por alguna carrera, el usuario ya fuera miembro.
-     *
-     * @param requesterId id del organizador autenticado
-     * @param requestId   id de la solicitud
-     * @return grupo al que se ha unido el solicitante
-     */
-    public GroupResponse acceptJoinRequest(String requesterId, String requestId) {
-        requireUserId(requesterId);
-        GroupJoinRequest request = getJoinRequestOrThrow(requestId);
-        Group group = getGroupOrThrow(request.getGroupId());
-        requireOrganizer(group, requesterId);
-        requirePendingJoinRequest(request);
-
-        if (!groupMemberRepository.existsByGroupIdAndUserId(group.getId(), request.getRequestedByUserId())) {
-            GroupMember member = new GroupMember();
-            member.setGroupId(group.getId());
-            member.setUserId(request.getRequestedByUserId());
-            member.setRole(GroupRole.MEMBER);
-            member.setJoinedAt(Instant.now());
-            groupMemberRepository.save(member);
-        }
-
-        request.setStatus(GroupJoinRequestStatus.ACCEPTED);
-        request.setRespondedAt(Instant.now());
-        groupJoinRequestRepository.save(request);
-
-        MapItUser requester = userService.getByIdOrThrow(request.getRequestedByUserId());
-        notificationService.notifyGroupJoinRequestResolved(requester, group.getName(), true);
-
-        log.info("Solicitud de acceso aceptada requestId={} groupId={} requestedByUserId={}",
-                requestId, group.getId(), request.getRequestedByUserId());
-        return buildGroupResponse(group);
-    }
-
-    /**
-     * Rechaza una solicitud de acceso pendiente. No añade al solicitante al grupo.
-     *
-     * @param requesterId id del organizador autenticado
-     * @param requestId   id de la solicitud
-     */
-    public void rejectJoinRequest(String requesterId, String requestId) {
-        requireUserId(requesterId);
-        GroupJoinRequest request = getJoinRequestOrThrow(requestId);
-        Group group = getGroupOrThrow(request.getGroupId());
-        requireOrganizer(group, requesterId);
-        requirePendingJoinRequest(request);
-
-        request.setStatus(GroupJoinRequestStatus.REJECTED);
-        request.setRespondedAt(Instant.now());
-        groupJoinRequestRepository.save(request);
-
-        MapItUser requester = userService.getByIdOrThrow(request.getRequestedByUserId());
-        notificationService.notifyGroupJoinRequestResolved(requester, group.getName(), false);
-
-        log.info("Solicitud de acceso rechazada requestId={} groupId={} requestedByUserId={}",
-                requestId, group.getId(), request.getRequestedByUserId());
-    }
-
-    private GroupJoinRequestResponse buildJoinRequestResponse(GroupJoinRequest request, Group group) {
-        MapItUser requester = userService.getByIdOrThrow(request.getRequestedByUserId());
-        return groupJoinRequestMapper.toResponse(request, group, requester.getName(), requester.getNick());
-    }
-
-    private GroupJoinRequest getJoinRequestOrThrow(String requestId) {
-        if (requestId == null) {
-            throw new ApiException("BAD_REQUEST", "ID de solicitud requerido", HttpStatus.BAD_REQUEST);
-        }
-        return groupJoinRequestRepository.findById(requestId)
-                .orElseThrow(() -> new ApiException("NOT_FOUND", "Solicitud no encontrada", HttpStatus.NOT_FOUND));
-    }
-
-    private void requirePendingJoinRequest(GroupJoinRequest request) {
-        if (request.getStatus() != GroupJoinRequestStatus.PENDING) {
-            throw new ApiException("CONFLICT", "Esta solicitud ya ha sido resuelta", HttpStatus.CONFLICT);
-        }
     }
 
     // ── Pertenencia / comunicación ───────────────────────────────────────────
@@ -885,7 +667,10 @@ public class GroupService {
     }
 
     private void requireInvitationOwner(GroupInvitation invitation, String userId) {
-        if (!invitation.getInvitedUserId().equals(userId)) {
+        // userId (requester autenticado) nunca es null; invitedUserId sí puede serlo si la
+        // invitación es por email y todavia no ha sido reclamada (ver GroupInvitation) — en ese
+        // caso nunca es "tuya" para nadie, por eso se compara desde userId y no al reves.
+        if (!userId.equals(invitation.getInvitedUserId())) {
             throw new ApiException("FORBIDDEN", "Esta invitación no es tuya", HttpStatus.FORBIDDEN);
         }
     }

@@ -53,6 +53,7 @@ despliegue.
 | JWT propio (HMAC), `JwtService` | Implementado a mano en vez de una librería (`jjwt`, etc.) como ejercicio deliberado de entender el formato JWT (header.payload.firma) y HMAC-SHA a bajo nivel, no por rechazo a las librerías estándar. |
 | [Spring Security](https://spring.io/projects/spring-security) | `JwtAuthFilter` (`OncePerRequestFilter`) rellena el `SecurityContextHolder`; las reglas de ruta pública/protegida viven en `SecurityConfig`. Sesiones stateless, CSRF deshabilitado — es una API de tokens pura. |
 | [zxcvbn](https://github.com/nulab/zxcvbn4j) (puerto Java) | Validación de fortaleza de contraseña con la misma escala 0-4 que `@zxcvbn-ts` en el frontend, para que el feedback de fuerza sea consistente en ambos lados. |
+| [bucket4j](https://github.com/bucket4j/bucket4j) (`bucket4j-core`) | Rate limiting por IP en `/login` y `/forgot-password` (`RateLimitFilter`) — sin él, nada limitaba los intentos de fuerza bruta ni la enumeración masiva de cuentas. En memoria, sin backend distribuido: válido mientras Cloud Run corra con una sola instancia. |
 
 ## Notificaciones
 
@@ -112,8 +113,8 @@ Desglose completo por clase de test: [`docs/tests.md`](tests.md).
   modelo de dominio y documento Mongo con mappers para entidades de solo CRUD (categorías,
   niveles, capacidades...) sería boilerplate sin ningún cambio de infraestructura previsto que
   lo justifique.
-- **FCM/APNs (push propietario) o Capacitor/Electron** para las notificaciones nativas: Web
-  Push (VAPID) ya cubre desktop y móvil vía navegador sin empaquetar la app ni depender de un
-  proveedor concreto. Quedan como paso siguiente natural cuando el frontend se empaquete de
-  verdad como app nativa — el puerto `PushSender` ya está diseñado para admitir un adaptador más
-  sin tocar `NotificationService`.
+- **FCM/APNs (push propietario)**: Web Push (VAPID) sigue cubriendo desktop sin depender de un
+  proveedor concreto. El frontend ya se empaqueta con Capacitor para Android (ver
+  `WEB/docs/CAPACITOR.md`), pero migrar el canal de push a FCM dentro de esa app nativa sigue
+  siendo un paso pendiente, no algo que el empaquetado resuelva por sí solo — el puerto
+  `PushSender` ya está diseñado para admitir un adaptador más sin tocar `NotificationService`.

@@ -116,6 +116,17 @@ class AuthServiceTest {
     }
 
     @Test
+    void register_conUserTypeAdmin_lanzaApiExceptionYNoCreaUsuario() {
+        AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "pass1234", UserType.ADMIN);
+
+        assertThatThrownBy(() -> authService.register(request))
+                .isInstanceOf(ApiException.class);
+
+        verify(userService, never()).create(any());
+        verify(emailVerificationService, never()).issueAndSend(any());
+    }
+
+    @Test
     void register_conUserTypeNull_lanzaApiException() {
         AuthRegisterRequest request = new AuthRegisterRequest("Ana", "ana", "ana@test.com", "pass1234", null);
         assertThatThrownBy(() -> authService.register(request))
@@ -232,5 +243,28 @@ class AuthServiceTest {
         authService.resetPassword("token-en-claro", "nuevaPass1234");
 
         verify(passwordResetService).resetPassword("token-en-claro", "nuevaPass1234");
+    }
+
+    // ── requireAdmin ─────────────────────────────
+
+    @Test
+    void requireAdmin_conUsuarioAdmin_devuelveElUserId() {
+        MapItUser admin = new MapItUser("admin-1", "Admin", "admin@test.com", "hash", UserType.ADMIN);
+        when(jwtService.extractUserId("Bearer token-admin")).thenReturn("admin-1");
+        when(userService.getByIdOrThrow("admin-1")).thenReturn(admin);
+
+        String userId = authService.requireAdmin("Bearer token-admin");
+
+        assertThat(userId).isEqualTo("admin-1");
+    }
+
+    @Test
+    void requireAdmin_conUsuarioNoAdmin_lanzaForbidden() {
+        when(jwtService.extractUserId("Bearer token-particular")).thenReturn("id-1");
+        when(userService.getByIdOrThrow("id-1")).thenReturn(mapItUser);
+
+        assertThatThrownBy(() -> authService.requireAdmin("Bearer token-particular"))
+                .isInstanceOf(ApiException.class)
+                .hasMessageContaining("administrador");
     }
 }

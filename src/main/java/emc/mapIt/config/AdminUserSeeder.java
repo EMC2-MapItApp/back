@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -16,8 +17,18 @@ import org.springframework.stereotype.Component;
  * arranque. Email/nick/password se leen de entorno (nunca hardcodeados); los defaults solo
  * aplican en dev local, igual que el resto de secretos del proyecto (ver
  * {@code application-dev.yaml}).
+ * <p>
+ * Excluido del perfil {@code prod} a propósito ({@link Profile @Profile("!prod")}): si las
+ * variables de entorno reales (Secret Manager) no llegasen a Cloud Run, este seeder no debe
+ * poder crear en producción una cuenta ADMIN con la password de desarrollo por defecto, visible
+ * en este mismo fichero. Si algún día hace falta sembrar el admin en un Mongo de producción
+ * vacío (entorno nuevo, disaster recovery), hacerlo a mano o levantar el perfil {@code prod} sin
+ * esta exclusión para ese despliegue puntual — no dejar el seeder activo en prod de forma
+ * permanente.
+ * </p>
  */
 @Component
+@Profile("!prod")
 public class AdminUserSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminUserSeeder.class);

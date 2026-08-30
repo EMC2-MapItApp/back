@@ -1,6 +1,7 @@
 package emc.mapIt.entity;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -19,8 +20,14 @@ public class User {
 
     private String name;
 
+    /** Único por regla de negocio (ver {@code AuthService#register}); indexado porque
+     *  {@code findByNick}/{@code existsByNick} se ejecutan en cada login/registro. */
+    @Indexed(unique = true)
     private String nick;
 
+    /** Único por regla de negocio; indexado porque {@code findByEmail}/{@code existsByEmail} se
+     *  ejecutan en cada login/registro. */
+    @Indexed(unique = true)
     private String email;
 
     private String passwordHash;

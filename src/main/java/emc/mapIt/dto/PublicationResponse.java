@@ -10,10 +10,14 @@ import java.util.Map;
 /**
  * Vista serializable de una publicación persistida.
  * <p>
- * {@code groupName}/{@code groupMemberCount}/{@code isGroupMember}/{@code accessRequestPending}
- * son {@code null} en publicaciones {@code PUBLIC}. {@code occupiedSlots} es {@code null}
- * exactamente cuando {@code visibility == PRIVATE_GROUP && !isGroupMember} — es el único punto de
- * fuga de aforo real hacia quien no es miembro del grupo (ver {@code PublicationMapper#toResponse}).
+ * {@code hasAccess} es siempre {@code true} en publicaciones {@code PUBLIC}; en {@code PRIVATE}
+ * refleja si el viewer es el autor, un ADMIN, o tiene una {@code PublicationInvitation} en estado
+ * distinto de {@code DECLINED}. Cuando {@code visibility == PRIVATE && !hasAccess}, {@code title},
+ * {@code description}, {@code metadata} y {@code occupiedSlots} llegan a {@code null} — es el
+ * enmascarado que evita filtrar el contenido de una publicación privada a quien no tiene acceso
+ * (ver {@code PublicationMapper#toResponse}). {@code lat}/{@code lng} se mantienen siempre para que
+ * el pin pueda dibujarse en el mapa. {@code accessRequestPending} es {@code null} en publicaciones
+ * {@code PUBLIC}.
  * </p>
  */
 public record PublicationResponse(
@@ -33,9 +37,6 @@ public record PublicationResponse(
                 Long occupiedSlots,
                 Boolean active,
                 PublicationVisibility visibility,
-                String groupId,
-                String groupName,
-                Integer groupMemberCount,
-                Boolean isGroupMember,
+                Boolean hasAccess,
                 Boolean accessRequestPending) {
 }

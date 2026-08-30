@@ -3,7 +3,9 @@ package emc.mapIt.dto;
 /**
  * Resultado de búsqueda de usuarios por nick/email (usado por el buscador de invitación a
  * grupos). Vista deliberadamente reducida frente a {@link MapItUserResponse}: no expone
- * capacidades, nivel/XP ni favoritos de un usuario distinto al autenticado.
+ * capacidades, nivel/XP ni favoritos de un usuario distinto al autenticado. {@code email} llega
+ * enmascarado (p. ej. {@code eu***ro@gmail.com}) — suficiente para desambiguar, no para
+ * identificar la dirección completa de otro usuario.
  */
 public record UserSearchResultResponse(
         String id,

@@ -9,10 +9,12 @@ import emc.mapIt.entity.User;
 import emc.mapIt.entity.UserProfileDetails;
 import emc.mapIt.entity.UserType;
 import emc.mapIt.exception.ApiException;
+import emc.mapIt.repository.CapabilityDefinitionRepository;
 import emc.mapIt.repository.LocationTypeRepository;
 import emc.mapIt.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -55,21 +57,26 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final LocationTypeRepository locationTypeRepository;
+    private final CapabilityDefinitionRepository capabilityDefinitionRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
 
     /**
      * Constructor para inyección de dependencias.
      *
-     * @param userRepository         repositorio de usuarios
-     * @param locationTypeRepository repositorio de tipos de ubicación
-     * @param passwordEncoder        codificador de contraseñas BCrypt
-     * @param passwordPolicyService  validación de política de contraseñas
+     * @param userRepository                 repositorio de usuarios
+     * @param locationTypeRepository         repositorio de tipos de ubicación
+     * @param capabilityDefinitionRepository catálogo real de capacidades, para validar
+     *                                        {@link #unlockCapability(String, String)}
+     * @param passwordEncoder                codificador de contraseñas BCrypt
+     * @param passwordPolicyService          validación de política de contraseñas
      */
     public UserService(UserRepository userRepository, LocationTypeRepository locationTypeRepository,
+            CapabilityDefinitionRepository capabilityDefinitionRepository,
             PasswordEncoder passwordEncoder, PasswordPolicyService passwordPolicyService) {
         this.userRepository = userRepository;
         this.locationTypeRepository = locationTypeRepository;
+        this.capabilityDefinitionRepository = capabilityDefinitionRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyService = passwordPolicyService;
     }
@@ -234,16 +241,40 @@ public class UserService {
         }
 
         String trimmed = query.trim();
-        return userRepository.findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(trimmed, trimmed).stream()
+        // +1 en la query Mongo: cubre el caso en que el propio usuario que busca esté entre los
+        // primeros resultados, sin dejar de acotar el tamaño de la respuesta de Mongo.
+        return userRepository
+                .findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                        trimmed, trimmed, PageRequest.of(0, USER_SEARCH_LIMIT + 1))
+                .stream()
                 .filter(user -> !user.getId().equals(excludingUserId))
                 .limit(USER_SEARCH_LIMIT)
                 .map(user -> new UserSearchResultResponse(
                         user.getId(),
                         user.getName(),
                         user.getNick(),
-                        user.getEmail(),
+                        maskEmail(user.getEmail()),
                         user.getProfileDetails() != null ? user.getProfileDetails().getAvatarUrl() : null))
                 .toList();
+    }
+
+    /**
+     * Enmascara un email para el buscador de invitación a grupos: suficiente para que quien
+     * busca desambigüe entre varios resultados con nick parecido, sin exponer la dirección
+     * completa de un usuario distinto al que busca.
+     * <p>
+     * {@code eusebio.montero@gmail.com} → {@code eu***ro@gmail.com}. Con parte local de menos de
+     * 4 caracteres (donde los 2 primeros y los 2 últimos se solaparían) se oculta entera.
+     * </p>
+     */
+    private static String maskEmail(String email) {
+        int at = email.indexOf('@');
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        if (local.length() < 4) {
+            return "***" + domain;
+        }
+        return local.substring(0, 2) + "***" + local.substring(local.length() - 2) + domain;
     }
 
     /**
@@ -336,6 +367,8 @@ public class UserService {
      * @throws ApiException con código BAD_REQUEST si id es nulo
      * @throws ApiException con código NOT_FOUND si el usuario no existe
      * @throws ApiException con código BAD_REQUEST si capabilityId es nulo/vacío
+     * @throws ApiException con código NOT_FOUND si capabilityId no existe en el catálogo real
+     *                       ({@link CapabilityDefinitionRepository})
      */
     public void unlockCapability(String id, String capabilityId) {
         if (id == null) {
@@ -350,6 +383,10 @@ public class UserService {
         }
 
         String trimmed = capabilityId.trim();
+        if (!capabilityDefinitionRepository.existsById(trimmed)) {
+            throw new ApiException("NOT_FOUND", "Capability no encontrada", HttpStatus.NOT_FOUND);
+        }
+
         List<String> capabilities = user.getUnlockedCapabilities();
         if (capabilities == null) {
             capabilities = new ArrayList<>();
@@ -400,6 +437,49 @@ public class UserService {
                 user.getBirthDate(),
                 user.getCreatedAt(),
                 user.getUpdatedAt());
+    }
+
+    /**
+     * Como {@link #toResponse(MapItUser)}, pero pensado para servir {@code GET /users/{id}},
+     * ruta pública sin sesión (ver {@code SecurityConfig}): enmascara a {@code null} los campos
+     * de contacto/perfil privados ({@code email}, {@code phone}, {@code birthDate}, {@code city},
+     * {@code province}) salvo que {@code viewerId} sea el propio usuario o un ADMIN. Nunca usar
+     * {@link #toResponse(MapItUser)} directamente para un viewer que no sea el propio usuario.
+     *
+     * @param user     usuario a serializar
+     * @param viewerId id de quien consulta; {@code null} si es anónimo
+     * @return DTO de respuesta, con los campos privados a {@code null} si el viewer no tiene
+     *         derecho a verlos
+     */
+    public MapItUserResponse toPublicResponse(MapItUser user, String viewerId) {
+        MapItUserResponse full = toResponse(user);
+        if (viewerId != null && (viewerId.equals(user.getId()) || isAdmin(viewerId))) {
+            return full;
+        }
+        return new MapItUserResponse(
+                full.id(),
+                full.name(),
+                full.nick(),
+                null,
+                full.userType(),
+                full.level(),
+                full.xp(),
+                full.unlockedCapabilities(),
+                full.favoriteLocationTypeIds(),
+                full.avatarUrl(),
+                null,
+                null,
+                null,
+                full.bio(),
+                null,
+                full.createdAt(),
+                full.updatedAt());
+    }
+
+    private boolean isAdmin(String userId) {
+        return userRepository.findById(userId)
+                .map(u -> u.getUserType() == UserType.ADMIN)
+                .orElse(false);
     }
 
     /**

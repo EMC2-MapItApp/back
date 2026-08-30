@@ -3,6 +3,8 @@ package emc.mapIt.entity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
@@ -16,11 +18,15 @@ import java.util.Map;
  * campos son nullable según el tipo — ver comentarios inline en cada campo.
  */
 @Document(collection = "publications")
+@CompoundIndex(name = "idx_active_startDate", def = "{'active': 1, 'startDate': -1}")
 public class Publication {
 
     @Id
     private String id;
 
+    /** Indexado: {@code findByAuthorId}/{@code findByAuthorIdAndActiveTrue} y los dos
+     *  {@code countByAuthorId...} (límites de publicación por usuario) filtran por este campo. */
+    @Indexed
     private String authorId;
 
     private PublicationType publicationType;
@@ -51,9 +57,6 @@ public class Publication {
     private Boolean active = true;
 
     private PublicationVisibility visibility = PublicationVisibility.PUBLIC;
-
-    /** Id del {@code Group} al que está restringida esta publicación. Solo poblado si {@code visibility == PRIVATE_GROUP}. */
-    private String groupId;
 
     // Constructores
     public Publication() {
@@ -187,13 +190,5 @@ public class Publication {
 
     public void setVisibility(PublicationVisibility visibility) {
         this.visibility = visibility;
-    }
-
-    public String getGroupId() {
-        return groupId;
-    }
-
-    public void setGroupId(String groupId) {
-        this.groupId = groupId;
     }
 }
