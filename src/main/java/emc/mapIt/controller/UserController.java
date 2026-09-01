@@ -199,69 +199,6 @@ public class UserController {
     }
 
     /**
-     * Devuelve los hitos y logros del usuario.
-     * <p>
-     * <strong>Estado:</strong> Endpoint en desarrollo. Actualmente devuelve lista
-     * vacía.
-     * Se integrará con el servicio de gamificación cuando esté disponible.
-     * </p>
-     *
-     * @param id identificador del usuario
-     * @return lista de hitos del usuario (actualmente vacía)
-     * @throws ApiException con código NOT_FOUND si el usuario no existe
-     *
-     * @deprecated Este método está en desarrollo
-     * @todo Integrar con GamificationService
-     */
-    @GetMapping("/{id}/milestones")
-    public List<Object> getMilestones(@PathVariable String id) {
-        log.debug("Lectura de milestones usuario id={}", id);
-
-        // Verificar que el usuario existe
-        userService.getByIdOrThrow(id);
-
-        // TODO: Integrar con GamificationService
-        // return gamificationService.getUserMilestones(id);
-        return List.of(); // Placeholder
-    }
-
-    /**
-     * Devuelve el lugar asociado al usuario (solo para profesionales y entidades).
-     * <p>
-     * <strong>Estado:</strong> Endpoint en desarrollo. Los usuarios individuales no
-     * pueden tener lugares.
-     * Se integrará con el servicio de lugares cuando esté disponible.
-     * </p>
-     *
-     * @param id identificador del usuario
-     * @return información del lugar del usuario
-     * @throws ApiException con código NOT_FOUND si el usuario no existe
-     * @throws ApiException con código FORBIDDEN si es usuario individual
-     *
-     * @deprecated Este método está en desarrollo
-     * @todo Integrar con PlaceService
-     */
-    @GetMapping("/{id}/place")
-    public Map<String, Object> getUserPlace(@PathVariable String id) {
-        log.debug("Lectura de place usuario id={}", id);
-
-        MapItUser user = userService.getByIdOrThrow(id);
-
-        // Solo profesionales y entidades pueden tener lugares
-        if (!user.canCreatePlaces()) {
-            throw new ApiException("FORBIDDEN",
-                    "Los usuarios individuales no pueden tener lugares",
-                    HttpStatus.FORBIDDEN);
-        }
-
-        // TODO: Integrar con PlaceService
-        // Place userPlace = placeService.findByOwnerId(id);
-        // return userPlace != null ? placeService.toResponse(userPlace) : null;
-
-        return Map.of("place", null); // Placeholder
-    }
-
-    /**
      * Devuelve las publicaciones creadas por el usuario.
      * <p>
      * Devuelve las publicaciones persistidas en base de datos y permite filtrar
