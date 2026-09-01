@@ -82,8 +82,8 @@ public class EmailNotificationSender implements NotificationSender {
     public void sendVerificationEmail(String to, String userName, String nick, String rawToken) {
         String link = frontendBaseUrl + "/verify-email?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
         String html = loadTemplate(TEMPLATE_PATH)
-                .replace("{{name}}", userName)
-                .replace("{{nick}}", nick != null ? nick : "")
+                .replace("{{name}}", escapeHtml(userName))
+                .replace("{{nick}}", escapeHtml(nick != null ? nick : ""))
                 .replace("{{link}}", link);
 
         try {
@@ -115,7 +115,7 @@ public class EmailNotificationSender implements NotificationSender {
     public void sendPasswordResetEmail(String to, String userName, String rawToken) {
         String link = frontendBaseUrl + "/reset-password?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
         String html = loadTemplate(RESET_TEMPLATE_PATH)
-                .replace("{{name}}", userName)
+                .replace("{{name}}", escapeHtml(userName))
                 .replace("{{link}}", link);
 
         try {
