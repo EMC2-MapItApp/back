@@ -17,8 +17,9 @@ siguen en progreso, no los des por completos ni cerrados.
 El sistema de niveles/XP/hitos ("gamificación") se **descartó** el 2026-09-01: el catálogo de
 capacidades (`CapabilityDefinition`, `GET/POST /users/{id}/capabilities`) sigue funcional y
 validado (útil como API adelantada al frontend, que hoy no la consume), pero `LevelDefinition`/
-`MilestoneDefinition`/`UserMilestone` y los endpoints placeholder que nunca llegaron a
-implementarse (`/users/{id}/milestones`, `/users/{id}/place`) se eliminaron — ningún punto del
+`MilestoneDefinition`/`UserMilestone`, los endpoints placeholder que nunca llegaron a
+implementarse (`/users/{id}/milestones`, `/users/{id}/place`) y los que exponían `level`/`xp`
+permanentemente a 0 (`/users/{id}/stats`, `/users/{id}/profile`) se eliminaron — ningún punto del
 código otorga XP, así que mantenerlos vivos solo aparentaba una funcionalidad inexistente. Ver
 `audit/AUDIT-DEBT.md` para el detalle de la decisión.
 
