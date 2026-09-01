@@ -80,8 +80,7 @@ public class WebPushSender implements PushSender {
 
             HttpResponse response = pushService.send(notification);
             int status = response.getStatusLine().getStatusCode();
-            // TODO(debug-push): log temporal — quitar una vez confirmado el flujo end-to-end.
-            log.info("Push service respondió HTTP {} para endpoint={}", status, subscription.getEndpoint());
+            log.debug("Push service respondió HTTP {} para endpoint={}", status, subscription.getEndpoint());
 
             if (status == 404 || status == 410) {
                 throw new PushSubscriptionExpiredException(

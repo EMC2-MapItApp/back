@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Base64;
 
@@ -57,7 +58,11 @@ public class JwtService {
         if (parts.length != 2) {
             throw new ApiException("UNAUTHORIZED", "Token invalido", HttpStatus.UNAUTHORIZED);
         }
-        if (!sign(parts[0]).equals(parts[1])) {
+        // MessageDigest.isEqual compara en tiempo constante: evita que un atacante deduzca la
+        // firma esperada byte a byte midiendo cuánto tarda en fallar String.equals.
+        if (!MessageDigest.isEqual(
+                sign(parts[0]).getBytes(StandardCharsets.UTF_8),
+                parts[1].getBytes(StandardCharsets.UTF_8))) {
             throw new ApiException("UNAUTHORIZED", "Firma de token invalida", HttpStatus.UNAUTHORIZED);
         }
         try {

@@ -42,6 +42,8 @@ public class EmailNotificationSender implements NotificationSender {
     private static final String PUBLICATION_ACCESS_REQUEST_TEMPLATE_PATH = "templates/email/publication-access-request-email.html";
     private static final String PUBLICATION_ACCESS_REQUEST_RESOLVED_TEMPLATE_PATH = "templates/email/publication-access-request-resolved-email.html";
     private static final String DEVELOPER_FEEDBACK_TEMPLATE_PATH = "templates/email/developer-feedback-email.html";
+    private static final String LOGO_CID = "mapitLogo";
+    private static final String LOGO_RESOURCE_PATH = "templates/email/images/mapit-logo.png";
 
     private final JavaMailSender mailSender;
     private final String fromAddress;
@@ -80,17 +82,18 @@ public class EmailNotificationSender implements NotificationSender {
     public void sendVerificationEmail(String to, String userName, String nick, String rawToken) {
         String link = frontendBaseUrl + "/verify-email?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
         String html = loadTemplate(TEMPLATE_PATH)
-                .replace("{{name}}", userName)
-                .replace("{{nick}}", nick != null ? nick : "")
+                .replace("{{name}}", escapeHtml(userName))
+                .replace("{{nick}}", escapeHtml(nick != null ? nick : ""))
                 .replace("{{link}}", link);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Verifica tu correo en MapIt");
             helper.setText(html, true);
+            addLogo(helper);
             mailSender.send(message);
             log.info("Email de verificacion enviado email={}", to);
         } catch (MessagingException | MailException ex) {
@@ -112,16 +115,17 @@ public class EmailNotificationSender implements NotificationSender {
     public void sendPasswordResetEmail(String to, String userName, String rawToken) {
         String link = frontendBaseUrl + "/reset-password?token=" + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
         String html = loadTemplate(RESET_TEMPLATE_PATH)
-                .replace("{{name}}", userName)
+                .replace("{{name}}", escapeHtml(userName))
                 .replace("{{link}}", link);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Restablece tu contraseña en MapIt");
             helper.setText(html, true);
+            addLogo(helper);
             mailSender.send(message);
             log.info("Email de restablecimiento de contraseña enviado email={}", to);
         } catch (MessagingException | MailException ex) {
@@ -157,11 +161,12 @@ public class EmailNotificationSender implements NotificationSender {
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Te han invitado a un grupo en MapIt");
             helper.setText(html, true);
+            addLogo(helper);
 
             log.debug("Enviando email de invitación a grupo vía SMTP: to={} from={}", to, fromAddress);
             mailSender.send(message);
@@ -194,11 +199,12 @@ public class EmailNotificationSender implements NotificationSender {
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Te han invitado a un grupo en MapIt");
             helper.setText(html, true);
+            addLogo(helper);
 
             log.debug("Enviando email de invitación de alta vía SMTP: to={} from={}", to, fromAddress);
             mailSender.send(message);
@@ -233,11 +239,12 @@ public class EmailNotificationSender implements NotificationSender {
 
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Nuevo aviso en tu grupo \"" + groupName + "\" de MapIt");
             helper.setText(html, true);
+            addLogo(helper);
 
             log.debug("Enviando email de aviso al organizador vía SMTP: to={} from={}", to, fromAddress);
             mailSender.send(mimeMessage);
@@ -272,11 +279,12 @@ public class EmailNotificationSender implements NotificationSender {
 
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Nuevo mensaje en tu grupo \"" + groupName + "\" de MapIt");
             helper.setText(html, true);
+            addLogo(helper);
 
             log.debug("Enviando email de difusión a miembro vía SMTP: to={} from={}", to, fromAddress);
             mailSender.send(mimeMessage);
@@ -304,11 +312,12 @@ public class EmailNotificationSender implements NotificationSender {
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Te han invitado a un evento en MapIt");
             helper.setText(html, true);
+            addLogo(helper);
 
             log.debug("Enviando email de invitación a publicación vía SMTP: to={} from={}", to, fromAddress);
             mailSender.send(message);
@@ -337,11 +346,12 @@ public class EmailNotificationSender implements NotificationSender {
 
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Nueva solicitud para apuntarse a \"" + publicationTitle + "\" en MapIt");
             helper.setText(html, true);
+            addLogo(helper);
 
             log.debug("Enviando email de solicitud de acceso a publicación vía SMTP: to={} from={}", to, fromAddress);
             mailSender.send(mimeMessage);
@@ -375,11 +385,12 @@ public class EmailNotificationSender implements NotificationSender {
 
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Tu solicitud para apuntarte a \"" + publicationTitle + "\" ha sido " + outcomeText);
             helper.setText(html, true);
+            addLogo(helper);
 
             log.debug("Enviando email de resolución de solicitud de acceso vía SMTP: to={} from={}", to, fromAddress);
             mailSender.send(mimeMessage);
@@ -415,11 +426,12 @@ public class EmailNotificationSender implements NotificationSender {
 
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
             helper.setTo(to);
             helper.setFrom(fromAddress);
             helper.setSubject("Nuevo feedback (" + category + ") en MapIt");
             helper.setText(html, true);
+            addLogo(helper);
 
             log.debug("Enviando email de feedback al desarrollador vía SMTP: to={} from={}", to, fromAddress);
             mailSender.send(mimeMessage);
@@ -432,6 +444,11 @@ public class EmailNotificationSender implements NotificationSender {
                     "No se pudo enviar el correo de feedback al equipo de desarrollo.",
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /** Incrusta el logo de MapIt como imagen referenciada por {@code cid:} desde las plantillas. */
+    private void addLogo(MimeMessageHelper helper) throws MessagingException {
+        helper.addInline(LOGO_CID, new ClassPathResource(LOGO_RESOURCE_PATH), "image/png");
     }
 
     private String loadTemplate(String templatePath) {

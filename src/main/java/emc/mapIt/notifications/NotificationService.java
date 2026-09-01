@@ -298,9 +298,7 @@ public class NotificationService {
 
         PushPayload payload = new PushPayload(title, body, link);
         List<PushSubscription> subscriptions = pushSubscriptionRepository.findByUserId(userId);
-        // TODO(debug-push): log temporal para diagnosticar el flujo de push en dev — quitar una
-        // vez confirmado que la entrega funciona de extremo a extremo.
-        log.info("Fan-out de push userId={} suscripcionesEncontradas={}", userId, subscriptions.size());
+        log.debug("Fan-out de push userId={} suscripcionesEncontradas={}", userId, subscriptions.size());
         subscriptions.forEach(subscription -> {
             try {
                 pushSender.send(subscription, payload);
