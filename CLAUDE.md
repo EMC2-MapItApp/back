@@ -20,8 +20,9 @@ validado (útil como API adelantada al frontend, que hoy no la consume), pero `L
 `MilestoneDefinition`/`UserMilestone`, los endpoints placeholder que nunca llegaron a
 implementarse (`/users/{id}/milestones`, `/users/{id}/place`) y los que exponían `level`/`xp`
 permanentemente a 0 (`/users/{id}/stats`, `/users/{id}/profile`) se eliminaron — ningún punto del
-código otorga XP, así que mantenerlos vivos solo aparentaba una funcionalidad inexistente. Ver
-`audit/AUDIT-DEBT.md` para el detalle de la decisión.
+código otorga XP, así que mantenerlos vivos solo aparentaba una funcionalidad inexistente. Detalle
+de la decisión en el registro interno de seguimiento de deuda técnica del proyecto (no
+versionado en este repo).
 
 La persistencia es **MongoDB** (Spring Data MongoDB) — el diseño original contemplaba
 PostgreSQL/PostGIS, pero el código migró a MongoDB Atlas pronto en el desarrollo (ver
