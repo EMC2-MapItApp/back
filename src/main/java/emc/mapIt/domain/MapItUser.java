@@ -59,13 +59,6 @@ public class MapItUser {
     // ✅ Métodos de utilidad adicionales
 
     /**
-     * Verifica si el usuario es individual y por tanto tiene gamificación.
-     */
-    public boolean hasGamification() {
-        return userType == UserType.PARTICULAR;
-    }
-
-    /**
      * Verifica si el usuario puede crear lugares.
      */
     public boolean canCreatePlaces() {

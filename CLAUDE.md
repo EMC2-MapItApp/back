@@ -8,12 +8,21 @@ Este archivo da contexto a Claude Code (claude.ai/code) al trabajar con el códi
 
 ## Proyecto
 
-MapIt API — backend en Spring Boot 3.3 / Java 21 para una plataforma de eventos locales con
-gamificación. El modelo de dominio contempla tres tipos de usuario (individual, profesional,
-entidad) que interactuarían mediante "publicaciones" geolocalizadas asociadas a "lugares"
-(places), pero **de momento solo el tipo individual está realmente implementado** — el sistema de
-niveles/XP/capacidades y los tipos profesional/entidad están en progreso, no los des por
-completos ni cerrados.
+MapIt API — backend en Spring Boot 3.3 / Java 21 para una plataforma de eventos locales. El
+modelo de dominio contempla tres tipos de usuario (individual, profesional, entidad) que
+interactuarían mediante "publicaciones" geolocalizadas asociadas a "lugares" (places), pero **de
+momento solo el tipo individual está realmente implementado** — los tipos profesional/entidad
+siguen en progreso, no los des por completos ni cerrados.
+
+El sistema de niveles/XP/hitos ("gamificación") se **descartó** el 2026-09-01: el catálogo de
+capacidades (`CapabilityDefinition`, `GET/POST /users/{id}/capabilities`) sigue funcional y
+validado (útil como API adelantada al frontend, que hoy no la consume), pero `LevelDefinition`/
+`MilestoneDefinition`/`UserMilestone`, los endpoints placeholder que nunca llegaron a
+implementarse (`/users/{id}/milestones`, `/users/{id}/place`) y los que exponían `level`/`xp`
+permanentemente a 0 (`/users/{id}/stats`, `/users/{id}/profile`) se eliminaron — ningún punto del
+código otorga XP, así que mantenerlos vivos solo aparentaba una funcionalidad inexistente. Detalle
+de la decisión en el registro interno de seguimiento de deuda técnica del proyecto (no
+versionado en este repo).
 
 La persistencia es **MongoDB** (Spring Data MongoDB) — el diseño original contemplaba
 PostgreSQL/PostGIS, pero el código migró a MongoDB Atlas pronto en el desarrollo (ver

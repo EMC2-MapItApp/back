@@ -156,17 +156,17 @@ class UserServiceTest {
     void searchUsers_enmascaraElEmailDeCadaResultado() {
         User other = new User();
         other.setId("user-2");
-        other.setName("Eusebio");
-        other.setNick("euse");
-        other.setEmail("eusebio.montero@gmail.com");
+        other.setName("Laura");
+        other.setNick("laur");
+        other.setEmail("laura.fernandez@example.com");
         when(userRepository.findByNickContainingIgnoreCaseOrEmailContainingIgnoreCase(
                 anyString(), anyString(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(List.of(other));
 
-        List<UserSearchResultResponse> results = userService.searchUsers("euse", "user-1");
+        List<UserSearchResultResponse> results = userService.searchUsers("laur", "user-1");
 
         assertThat(results).hasSize(1);
-        assertThat(results.get(0).email()).isEqualTo("eu***ro@gmail.com");
+        assertThat(results.get(0).email()).isEqualTo("la***ez@example.com");
     }
 
     @Test

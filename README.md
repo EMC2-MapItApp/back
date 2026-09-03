@@ -7,7 +7,7 @@
 ![Deploy](https://img.shields.io/badge/deploy-Google%20Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)
 
 Backend REST de **MapIt**, una plataforma de eventos y lugares locales geolocalizados con un
-componente de gamificación (niveles, XP, capacidades). Java 21 · Spring Boot 3.3 · MongoDB ·
+catálogo de capacidades de usuario. Java 21 · Spring Boot 3.3 · MongoDB ·
 JWT propio · desplegado en Google Cloud Run vía CI/CD con GitHub Actions.
 
 > Proyecto personal de portfolio. El objetivo actual no es cubrir todo el dominio diseñado desde
@@ -40,11 +40,12 @@ JWT propio · desplegado en Google Cloud Run vía CI/CD con GitHub Actions.
 ## Estado del proyecto
 
 El modelo de dominio contempla tres tipos de usuario (**individual**, profesional, entidad), pero
-**hoy solo el tipo individual está implementado de verdad**. El sistema de niveles/XP/capacidades
-y los tipos profesional/entidad están en progreso — sus entidades (`LevelDefinition`,
-`CapabilityDefinition`, `MilestoneDefinition`) ya existen en el modelo pero la lógica de negocio
-alrededor está parcialmente construida. No lo interpretes como un roadmap cerrado: es un proyecto
-vivo que evoluciona con el tiempo disponible.
+**hoy solo el tipo individual está implementado de verdad** — los tipos profesional/entidad están
+en progreso. El sistema de niveles/XP/hitos ("gamificación") se descartó como decisión de producto
+(nunca se conectó el motor de XP): `CapabilityDefinition` (catálogo de capacidades) sigue
+funcional y validado, pero `LevelDefinition`/`MilestoneDefinition`/`UserMilestone` y sus
+endpoints se eliminaron. No lo interpretes como un roadmap cerrado: es un proyecto vivo que
+evoluciona con el tiempo disponible.
 
 | Pieza | Estado |
 |---|---|
@@ -53,10 +54,11 @@ vivo que evoluciona con el tiempo disponible.
 | Publicaciones geolocalizadas (crear, listar, inscribirse) | ✅ Completo |
 | Categorías / lugares (árbol categoría → subcategoría → tipo de lugar) | ✅ Completo |
 | Geolocalización por IP (fallback de ubicación) | ✅ Completo |
+| Grupos (públicos/privados) + notificaciones (email, in-app) | ✅ Completo |
 | CI/CD a Google Cloud Run | ✅ Completo |
-| Niveles, XP, capacidades, milestones | 🚧 Modelo creado, lógica en progreso |
-| Profesionaes / Entidades (Ayuntamientos, Asociaciones, etc.) | 🚧 No implementado |
-| Grupos (Creación de grupos públicos y privados) | 🚧 No implementado |
+| Catálogo de capacidades de usuario | ✅ API funcional, sin consumidor en el frontend todavía |
+| Niveles, XP, hitos ("gamificación") | ❌ Descartado (2026-09-01), no forma parte del roadmap |
+| Profesionales / Entidades (Ayuntamientos, Asociaciones, etc.) | 🚧 No implementado |
 
 ---
 
@@ -124,12 +126,8 @@ POST   /api/v1/auth/logout                     Logout (stateless)
 
 GET    /api/v1/users/{id}                       Perfil público de usuario
 PATCH  /api/v1/users/{id}                       Editar perfil propio
-GET    /api/v1/users/{id}/profile               Detalle de perfil
-GET    /api/v1/users/{id}/stats                 Estadísticas de usuario
 GET    /api/v1/users/{id}/capabilities          Capacidades desbloqueadas
 POST   /api/v1/users/{id}/capabilities/{cid}    Desbloquear capacidad
-GET    /api/v1/users/{id}/milestones            Hitos alcanzados
-GET    /api/v1/users/{id}/place                 Lugar asociado al usuario
 GET    /api/v1/users/{id}/publications          Publicaciones del usuario
 POST   /api/v1/users/{id}/favorites/{typeId}    Añadir lugar favorito
 DELETE /api/v1/users/{id}/favorites/{typeId}    Quitar lugar favorito

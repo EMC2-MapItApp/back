@@ -263,7 +263,7 @@ public class UserService {
      * busca desambigüe entre varios resultados con nick parecido, sin exponer la dirección
      * completa de un usuario distinto al que busca.
      * <p>
-     * {@code eusebio.montero@gmail.com} → {@code eu***ro@gmail.com}. Con parte local de menos de
+     * {@code laura.fernandez@example.com} → {@code la***ez@example.com}. Con parte local de menos de
      * 4 caracteres (donde los 2 primeros y los 2 últimos se solaparían) se oculta entera.
      * </p>
      */
