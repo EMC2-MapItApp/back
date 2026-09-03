@@ -13,20 +13,27 @@
 	<artifactId>mapIt</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>war</packaging>
-	<name />
-	<description />
-	<url />
+	<name>mapIt</name>
+	<description>Backend REST de MapIt, una plataforma de eventos y lugares locales geolocalizados.</description>
+	<url>https://github.com/EMC2-MapItApp/back</url>
 	<licenses>
-		<license />
+		<license>
+			<name>PolyForm Noncommercial License 1.0.0</name>
+			<url>https://polyformproject.org/licenses/noncommercial/1.0.0</url>
+			<distribution>repo</distribution>
+		</license>
 	</licenses>
 	<developers>
-		<developer />
+		<developer>
+			<name>Eusebio Montero</name>
+			<url>https://github.com/EMC2-MapItApp</url>
+		</developer>
 	</developers>
 	<scm>
-		<connection />
-		<developerConnection />
-		<tag />
-		<url />
+		<connection>scm:git:https://github.com/EMC2-MapItApp/back.git</connection>
+		<developerConnection>scm:git:https://github.com/EMC2-MapItApp/back.git</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/EMC2-MapItApp/back</url>
 	</scm>
 	<properties>
 		<java.version>21</java.version>
